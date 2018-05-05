@@ -13,6 +13,12 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 {
 
 }
+
+void surface_removed (struct weston_desktop_surface *desktop_surface,
+                      void                   *data)
+{
+
+}
 static int vlog (const char *fmt,
                  va_list     ap)
 {
@@ -65,7 +71,7 @@ int main (int    argc,
 	ret = weston_compositor_load_backend (ec, WESTON_BACKEND_WAYLAND, &config.base);
 
   desktop_api.surface_added = surface_added;
-  desktop_api.surface_removed = surface_added;
+  desktop_api.surface_removed = surface_removed;
 
   desktop = weston_desktop_create (ec, &desktop_api, NULL);
 
