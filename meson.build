@@ -1,0 +1,13 @@
+project('test-libweston-desktop', 'c',
+	default_options: 'c_std=c11')
+wayland_server = dependency('wayland-server')
+wayland_client = dependency('wayland-client')
+wayland_protocols = dependency('wayland-protocols')
+libweston = dependency ('libweston-5')
+libweston_desktop= dependency ('libweston-desktop-5')
+libinput = dependency('libinput')
+pixman = dependency('pixman-1')
+xkbcommon = dependency('xkbcommon')
+egl = dependency('egl')
+libevdev = dependency('libevdev')
+executable('test-libweston-desktop', 'main.c', dependencies : [wayland_server, wayland_client, wayland_protocols, libinput, libweston, pixman, xkbcommon, egl, libevdev, libweston_desktop])

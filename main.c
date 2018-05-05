@@ -1,0 +1,78 @@
+#include <wayland-server.h>
+#include <compositor.h>
+#include <compositor-drm.h>
+#include <compositor-wayland.h>
+#include <libweston-desktop.h>
+#include <libinput.h>
+#include <string.h>
+#include <windowed-output-api.h>
+#include <stdio.h>
+
+void surface_added (struct weston_desktop_surface *desktop_surface,
+                    void                   *data)
+{
+
+}
+static int vlog (const char *fmt,
+                 va_list     ap)
+{
+  return vfprintf (stderr, fmt, ap);
+}
+
+static int vlog_continue (const char *fmt,
+                          va_list     argp)
+{
+  return vfprintf (stderr, fmt, argp);
+}
+int main (int    argc,
+          char **argv)
+{
+	struct wl_display *display;
+	struct weston_compositor *ec = NULL;
+	int ret = 0;
+  const char *server_name;
+  struct weston_desktop_api desktop_api;
+  struct weston_windowed_output_api *api;
+  struct weston_desktop *desktop;
+
+	display = wl_display_create ();
+	ec = weston_compositor_create (display, NULL);
+
+	if (!ec)
+		return 0;
+
+  weston_log_set_handler (vlog, vlog_continue);
+
+	ec->default_pointer_grab = NULL;
+	ec->vt_switching = true;
+
+	ec->repaint_msec = 16;
+	ec->idle_time = 300;
+
+	struct weston_wayland_backend_config config = {{0, }};
+
+	config.base.struct_version = WESTON_WAYLAND_BACKEND_CONFIG_VERSION;
+	config.base.struct_size = sizeof (struct weston_wayland_backend_config);
+
+	config.cursor_size = 32;
+	config.display_name = 0;
+	config.use_pixman = 0;
+	config.sprawl = 0;
+	config.fullscreen = 0;
+	config.cursor_theme = NULL;
+
+
+	ret = weston_compositor_load_backend (ec, WESTON_BACKEND_WAYLAND, &config.base);
+
+  desktop_api.surface_added = surface_added;
+  desktop_api.surface_removed = surface_added;
+
+  desktop = weston_desktop_create (ec, &desktop_api, NULL);
+
+  weston_compositor_wake (ec);
+  wl_display_run (display);
+
+
+
+	return 0;
+}
