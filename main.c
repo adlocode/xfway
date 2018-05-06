@@ -8,6 +8,12 @@
 #include <windowed-output-api.h>
 #include <stdio.h>
 
+struct TestServer
+{
+  struct wl_listener new_output;
+  const struct weston_windowed_output_api *api;
+};
+
 void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *data)
 {
@@ -30,16 +36,31 @@ static int vlog_continue (const char *fmt,
 {
   return vfprintf (stderr, fmt, argp);
 }
+
+static void new_output_notify (struct wl_listener *listener,
+                            void               *data)
+{
+  struct weston_output *output = data;
+  struct TestServer *server = wl_container_of (listener, server, new_output);
+
+  weston_output_set_scale (output, 1);
+  weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
+  server->api->output_set_size (output, 800, 600);
+  weston_output_enable (output);
+
+}
 int main (int    argc,
           char **argv)
 {
 	struct wl_display *display;
 	struct weston_compositor *ec = NULL;
 	int ret = 0;
-  const char *server_name;
+  const char *socket_name;
   struct weston_desktop_api desktop_api;
-  struct weston_windowed_output_api *api;
   struct weston_desktop *desktop;
+  struct TestServer *server;
+
+  server = malloc (sizeof(struct TestServer));
 
 	display = wl_display_create ();
 	ec = weston_compositor_create (display, NULL);
@@ -70,10 +91,19 @@ int main (int    argc,
 
 	ret = weston_compositor_load_backend (ec, WESTON_BACKEND_WAYLAND, &config.base);
 
+  server->api = weston_windowed_output_get_api (ec);
+  server->new_output.notify = new_output_notify;
+  wl_signal_add (&ec->output_created_signal, &server->new_output);
+
+  server->api->create_head (ec, "W1");
+
   desktop_api.surface_added = surface_added;
   desktop_api.surface_removed = surface_removed;
 
   desktop = weston_desktop_create (ec, &desktop_api, NULL);
+
+  //socket_name = wl_display_add_socket_auto (display);
+  //setenv ("WAYLAND_DISPLAY", socket_name, 1);
 
   weston_compositor_wake (ec);
   wl_display_run (display);
