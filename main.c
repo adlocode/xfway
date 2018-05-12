@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <wayland-server.h>
 #include <compositor.h>
 #include <compositor-drm.h>
@@ -7,6 +8,7 @@
 #include <string.h>
 #include <windowed-output-api.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 struct TestServer
 {
@@ -55,7 +57,7 @@ int main (int    argc,
 	struct wl_display *display;
 	struct weston_compositor *ec = NULL;
 	int ret = 0;
-  const char *socket_name;
+  const char *socket_name = NULL;
   struct weston_desktop_api desktop_api;
   struct weston_desktop *desktop;
   struct TestServer *server;
@@ -102,8 +104,13 @@ int main (int    argc,
 
   desktop = weston_desktop_create (ec, &desktop_api, NULL);
 
-  //socket_name = wl_display_add_socket_auto (display);
-  //setenv ("WAYLAND_DISPLAY", socket_name, 1);
+  socket_name = wl_display_add_socket_auto (display);
+  if (socket_name)
+  {
+    weston_log ("Compositor running on %s", socket_name);
+    setenv ("WAYLAND_DISPLAY", socket_name, 1);
+  }
+
 
   weston_compositor_wake (ec);
   wl_display_run (display);
