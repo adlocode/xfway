@@ -28,20 +28,60 @@
 
 struct TestServer
 {
+  struct weston_compositor *compositor;
   struct wl_listener new_output;
   const struct weston_windowed_output_api *api;
+  struct weston_layer background_layer;
+  struct weston_surface *background;
+  struct weston_view *background_view;
+  struct weston_layer surfaces_layer;
+};
+
+struct TestServerSurface
+{
+  struct weston_desktop_surface *desktop_surface;
+  struct weston_surface *surface;
+  struct weston_view *view;
 };
 
 void surface_added (struct weston_desktop_surface *desktop_surface,
-                    void                   *data)
+                    void                   *user_data)
 {
+  struct TestServer *server = user_data;
 
+  struct TestServerSurface *self;
+
+  self = calloc (1, sizeof (struct TestServerSurface));
+
+  self->desktop_surface = desktop_surface;
+
+  weston_desktop_surface_set_user_data (self->desktop_surface, self);
+
+  self->surface = weston_desktop_surface_get_surface (self->desktop_surface);
+  self->view = weston_desktop_surface_create_view (self->desktop_surface);
+
+  weston_layer_entry_insert (&server->surfaces_layer.view_list, &self->view->layer_link);
+
+  weston_view_set_position (self->view, 0, 0);
+
+  weston_surface_damage (self->surface);
+  weston_compositor_schedule_repaint (server->compositor);
 }
 
 void surface_removed (struct weston_desktop_surface *desktop_surface,
-                      void                   *data)
+                      void                   *user_data)
 {
+  struct TestServer *server = user_data;
 
+  struct TestServerSurface *self = weston_desktop_surface_get_user_data (desktop_surface);
+
+  if (self == NULL)
+    return;
+
+  weston_desktop_surface_unlink_view (self->view);
+  weston_view_destroy (self->view);
+  weston_desktop_surface_set_user_data (desktop_surface, NULL);
+  free (self);
 }
 static int vlog (const char *fmt,
                  va_list     ap)
@@ -81,18 +121,19 @@ int main (int    argc,
   server = malloc (sizeof(struct TestServer));
 
 	display = wl_display_create ();
-	ec = weston_compositor_create (display, NULL);
+	server->compositor = weston_compositor_create (display, NULL);
+  weston_compositor_set_xkb_rule_names (server->compositor, NULL);
 
-	if (!ec)
+	if (!server->compositor)
 		return 0;
 
   weston_log_set_handler (vlog, vlog_continue);
 
-	ec->default_pointer_grab = NULL;
-	ec->vt_switching = true;
+	server->compositor->default_pointer_grab = NULL;
+	server->compositor->vt_switching = true;
 
-	ec->repaint_msec = 16;
-	ec->idle_time = 300;
+	server->compositor->repaint_msec = 16;
+	server->compositor->idle_time = 300;
 
 	struct weston_wayland_backend_config config = {{0, }};
 
@@ -107,29 +148,44 @@ int main (int    argc,
 	config.cursor_theme = NULL;
 
 
-	ret = weston_compositor_load_backend (ec, WESTON_BACKEND_WAYLAND, &config.base);
+	ret = weston_compositor_load_backend (server->compositor, WESTON_BACKEND_WAYLAND, &config.base);
 
-  server->api = weston_windowed_output_get_api (ec);
+  server->api = weston_windowed_output_get_api (server->compositor);
   server->new_output.notify = new_output_notify;
-  wl_signal_add (&ec->output_created_signal, &server->new_output);
+  wl_signal_add (&server->compositor->output_created_signal, &server->new_output);
 
-  server->api->create_head (ec, "W1");
+  server->api->output_create (server->compositor, "W1");
 
   desktop_api.surface_added = surface_added;
   desktop_api.surface_removed = surface_removed;
 
-  desktop = weston_desktop_create (ec, &desktop_api, NULL);
+
+
+  weston_pending_output_coldplug (server->compositor);
+
+  weston_layer_init (&server->background_layer, server->compositor);
+  weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
+  server->background = weston_surface_create (server->compositor);
+  weston_surface_set_size (server->background, 8096, 8096);
+  weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
+  server->background_view = weston_view_create (server->background);
+  weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
+
+  desktop = weston_desktop_create (server->compositor, &desktop_api, server);
+  weston_layer_init (&server->surfaces_layer, server->compositor);
+  weston_layer_set_position (&server->surfaces_layer, WESTON_LAYER_POSITION_NORMAL);
+
 
   socket_name = wl_display_add_socket_auto (display);
   if (socket_name)
   {
     weston_log ("Compositor running on %s", socket_name);
     setenv ("WAYLAND_DISPLAY", socket_name, 1);
+    unsetenv ("DISPLAY");
   }
 
-  weston_compositor_flush_heads_changed (ec);
 
-  weston_compositor_wake (ec);
+  weston_compositor_wake (server->compositor);
   wl_display_run (display);
 
 
