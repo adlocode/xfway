@@ -107,6 +107,16 @@ static void new_output_notify (struct wl_listener *listener,
   weston_output_enable (output);
 
 }
+
+static const struct weston_desktop_api desktop_api =
+{
+  .struct_size = sizeof (struct weston_desktop_api),
+
+  .surface_added = surface_added,
+  .surface_removed = surface_removed,
+
+};
+
 int main (int    argc,
           char **argv)
 {
@@ -114,7 +124,6 @@ int main (int    argc,
 	struct weston_compositor *ec = NULL;
 	int ret = 0;
   const char *socket_name = NULL;
-  struct weston_desktop_api desktop_api;
   struct weston_desktop *desktop;
   struct TestServer *server;
 
@@ -152,12 +161,12 @@ int main (int    argc,
 
   server->api = weston_windowed_output_get_api (server->compositor);
   server->new_output.notify = new_output_notify;
-  wl_signal_add (&server->compositor->output_created_signal, &server->new_output);
+  wl_signal_add (&server->compositor->output_pending_signal, &server->new_output);
 
   server->api->output_create (server->compositor, "W1");
 
-  desktop_api.surface_added = surface_added;
-  desktop_api.surface_removed = surface_removed;
+  //desktop_api.surface_added = surface_added;
+  //desktop_api.surface_removed = surface_removed;
 
 
 
@@ -166,7 +175,7 @@ int main (int    argc,
   weston_layer_init (&server->background_layer, server->compositor);
   weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
   server->background = weston_surface_create (server->compositor);
-  weston_surface_set_size (server->background, 8096, 8096);
+  weston_surface_set_size (server->background, 1024, 768);
   weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
   server->background_view = weston_view_create (server->background);
   weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
@@ -188,7 +197,8 @@ int main (int    argc,
   weston_compositor_wake (server->compositor);
   wl_display_run (display);
 
-
+  weston_desktop_destroy (desktop);
+  weston_compositor_destroy (server->compositor);
 
 	return 0;
 }
