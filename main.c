@@ -66,6 +66,13 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 
   weston_surface_damage (self->surface);
   weston_compositor_schedule_repaint (server->compositor);
+
+  struct weston_seat *s;
+  wl_list_for_each (s, &server->compositor->seat_list, link)
+    {
+      weston_seat_set_keyboard_focus (s, self->surface);
+
+    }
 }
 
 void surface_removed (struct weston_desktop_surface *desktop_surface,
