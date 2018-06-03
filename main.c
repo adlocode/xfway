@@ -25,6 +25,7 @@
 #include <windowed-output-api.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <linux/input.h>
 
 struct TestServer
 {
@@ -89,6 +90,21 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
   weston_view_destroy (self->view);
   weston_desktop_surface_set_user_data (desktop_surface, NULL);
   free (self);
+}
+
+static void click_to_activate_binding (struct weston_pointer *pointer,
+                                       const struct timespec *time,
+                                       uint32_t               button,
+                                       void                  *data)
+{
+  struct TestServer *server = data;
+  struct weston_seat *s;
+  wl_list_for_each (s, &server->compositor->seat_list, link)
+    {
+      weston_seat_set_keyboard_focus (s, pointer->focus->surface);
+
+    }
+
 }
 static int vlog (const char *fmt,
                  va_list     ap)
@@ -199,6 +215,13 @@ int main (int    argc,
     setenv ("WAYLAND_DISPLAY", socket_name, 1);
     unsetenv ("DISPLAY");
   }
+
+  weston_compositor_add_button_binding (server->compositor, BTN_LEFT, 0,
+                                        click_to_activate_binding,
+                                        server);
+  weston_compositor_add_button_binding (server->compositor, BTN_RIGHT, 0,
+                                        click_to_activate_binding,
+                                        server);
 
 
   weston_compositor_wake (server->compositor);
