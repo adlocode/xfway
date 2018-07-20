@@ -122,6 +122,29 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
     }
 
 }
+
+static void
+desktop_surface_move (struct weston_desktop_surface *desktop_surface,
+                      struct weston_seat            *seat,
+                      uint32_t                      *serial,
+                      void                          *data)
+{
+  struct weston_pointer *pointer = weston_seat_get_pointer (seat);
+  struct TestServer *server = data;
+  struct TestServerSurface *shsurf = weston_desktop_surface_get_user_data (desktop_surface);
+  int x, y, dx, dy;
+
+  dx = wl_fixed_to_int (shsurf->view->geometry.x - pointer->x);
+  dy = wl_fixed_to_int (shsurf->view->geometry.y - pointer->y);
+
+  x = wl_fixed_to_int (pointer->x + dx);
+  y = wl_fixed_to_int (pointer->y + dy);
+
+  weston_view_set_position (shsurf->view, x, y);
+  weston_surface_damage (shsurf->surface);
+  weston_compositor_schedule_repaint (server->compositor);
+}
+
 static int vlog (const char *fmt,
                  va_list     ap)
 {
@@ -153,6 +176,7 @@ static const struct weston_desktop_api desktop_api =
 
   .surface_added = surface_added,
   .surface_removed = surface_removed,
+  .move = desktop_surface_move,
 
 };
 
