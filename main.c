@@ -43,6 +43,8 @@ struct TestServerSurface
   struct weston_desktop_surface *desktop_surface;
   struct weston_surface *surface;
   struct weston_view *view;
+
+  struct TestServer *server;
 };
 
 void surface_added (struct weston_desktop_surface *desktop_surface,
@@ -55,6 +57,7 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   self = calloc (1, sizeof (struct TestServerSurface));
 
   self->desktop_surface = desktop_surface;
+  self->server = server;
 
   weston_desktop_surface_set_user_data (self->desktop_surface, self);
 
@@ -134,8 +137,8 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
   struct TestServerSurface *shsurf = weston_desktop_surface_get_user_data (desktop_surface);
   int x, y, dx, dy;
 
-  dx = wl_fixed_to_int (shsurf->view->geometry.x - pointer->x);
-  dy = wl_fixed_to_int (shsurf->view->geometry.y - pointer->y);
+  dx = wl_fixed_to_int (shsurf->view->geometry.x - pointer->grab_x);
+  dy = wl_fixed_to_int (shsurf->view->geometry.y - pointer->grab_y);
 
   x = wl_fixed_to_int (pointer->x + dx);
   y = wl_fixed_to_int (pointer->y + dy);
