@@ -46,6 +46,7 @@ struct TestServer
 
 struct TestServerSurface
 {
+  struct wl_signal destroy_signal;
   struct weston_desktop_surface *desktop_surface;
   struct weston_surface *surface;
   struct weston_view *view;
@@ -57,6 +58,7 @@ struct TestServerGrab
 {
   struct weston_pointer_grab grab;
   struct TestServerSurface *shsurf;
+  struct wl_listener shsurf_destroy_listener;
 };
 
 struct TestServerMoveGrab
@@ -95,6 +97,8 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
       weston_seat_set_keyboard_focus (s, self->surface);
 
     }
+
+  wl_signal_init (&self->destroy_signal);
 }
 
 void surface_removed (struct weston_desktop_surface *desktop_surface,
@@ -104,8 +108,10 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
 
   struct TestServerSurface *self = weston_desktop_surface_get_user_data (desktop_surface);
 
-  if (self == NULL)
+  if (!self)
     return;
+
+  wl_signal_emit (&self->destroy_signal, self);
 
   weston_desktop_surface_unlink_view (self->view);
   weston_view_destroy (self->view);
@@ -145,6 +151,17 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
 }
 
 static void
+destroy_shell_grab_shsurf(struct wl_listener *listener, void *data)
+{
+	struct TestServerGrab *grab;
+
+	grab = container_of(listener, struct TestServerGrab,
+			    shsurf_destroy_listener);
+
+	grab->shsurf = NULL;
+}
+
+static void
 test_server_grab_start (struct TestServerGrab                     *grab,
                         const struct weston_pointer_grab_interface *interface,
                         struct TestServerSurface                   *shsurf,
@@ -154,6 +171,9 @@ test_server_grab_start (struct TestServerGrab                     *grab,
 
   grab->grab.interface = interface;
   grab->shsurf = shsurf;
+  grab->shsurf_destroy_listener.notify = destroy_shell_grab_shsurf;
+  wl_signal_add (&shsurf->destroy_signal,
+                 &grab->shsurf_destroy_listener);
 
   weston_pointer_start_grab (pointer, &grab->grab);
 }
@@ -227,6 +247,10 @@ move_grab_motion(struct weston_pointer_grab *grab,
 static void
 test_server_grab_end(struct TestServerGrab *grab)
 {
+  if (grab->shsurf)
+  {
+		wl_list_remove(&grab->shsurf_destroy_listener.link);
+	}
 	weston_pointer_end_grab(grab->grab.pointer);
 }
 
