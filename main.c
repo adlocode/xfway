@@ -206,7 +206,6 @@ move_grab_motion(struct weston_pointer_grab *grab,
 		 struct weston_pointer_motion_event *event)
 {
 	struct TestServerMoveGrab *move = (struct TestServerMoveGrab *) grab;
-  //move = wl_container_of (wl_container_of (grab, move, grab),
 	struct weston_pointer *pointer = grab->pointer;
 	struct TestServerSurface *shsurf = move->base.shsurf;
 	struct weston_surface *surface;
@@ -286,16 +285,6 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
 
   test_server_grab_start (&move->base, &move_grab_interface, shsurf,
                           pointer);
-
-  //x = wl_fixed_to_int (pointer->x + move->dx);
-  //y = wl_fixed_to_int (pointer->y + move->dy);
-
-  //weston_log ("x = %d", x);
-  //weston_log ("y = %d", y);
-
-  //weston_view_set_position (shsurf->view, x, y);
-  //weston_surface_damage (shsurf->surface);
-  //weston_compositor_schedule_repaint (server->compositor);
 }
 
 static int vlog (const char *fmt,
@@ -380,11 +369,6 @@ int main (int    argc,
   wl_signal_add (&server->compositor->output_pending_signal, &server->new_output);
 
   server->api->output_create (server->compositor, "W1");
-
-  //desktop_api.surface_added = surface_added;
-  //desktop_api.surface_removed = surface_removed;
-
-
 
   weston_pending_output_coldplug (server->compositor);
 
