@@ -1,5 +1,6 @@
 project('test-libweston-desktop', 'c',
 	default_options: 'c_std=c11')
+cc = meson.get_compiler('c')
 wayland_server = dependency('wayland-server')
 wayland_client = dependency('wayland-client')
 wayland_protocols = dependency('wayland-protocols')
@@ -10,4 +11,5 @@ pixman = dependency('pixman-1')
 xkbcommon = dependency('xkbcommon')
 egl = dependency('egl')
 libevdev = dependency('libevdev')
-executable('test-libweston-desktop', 'main.c', dependencies : [wayland_server, wayland_client, wayland_protocols, libinput, libweston, pixman, xkbcommon, egl, libevdev, libweston_desktop])
+m = cc.find_library('m', required : false)
+executable('test-libweston-desktop', 'main.c', dependencies : [wayland_server, wayland_client, wayland_protocols, libinput, libweston, pixman, xkbcommon, egl, libevdev, libweston_desktop, m])
