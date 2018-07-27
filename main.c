@@ -27,6 +27,12 @@
 #include <stdlib.h>
 #include <linux/input.h>
 
+#ifndef container_of
+#define container_of(ptr, type, member) ({				\
+	const __typeof__( ((type *)0)->member ) *__mptr = (ptr);	\
+	(type *)( (char *)__mptr - offsetof(type,member) );})
+#endif
+
 struct TestServer
 {
   struct weston_compositor *compositor;
@@ -45,6 +51,18 @@ struct TestServerSurface
   struct weston_view *view;
 
   struct TestServer *server;
+};
+
+struct TestServerGrab
+{
+  struct weston_pointer_grab grab;
+  struct TestServerSurface *shsurf;
+};
+
+struct TestServerMoveGrab
+{
+  struct TestServerGrab base;
+  wl_fixed_t dx, dy;
 };
 
 void surface_added (struct weston_desktop_surface *desktop_surface,
@@ -127,6 +145,129 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
 }
 
 static void
+test_server_grab_start (struct TestServerGrab                     *grab,
+                        const struct weston_pointer_grab_interface *interface,
+                        struct TestServerSurface                   *shsurf,
+                        struct weston_pointer                      *pointer)
+{
+  weston_seat_break_desktop_grabs (pointer->seat);
+
+  grab->grab.interface = interface;
+  grab->shsurf = shsurf;
+
+  weston_pointer_start_grab (pointer, &grab->grab);
+}
+
+static void
+noop_grab_focus(struct weston_pointer_grab *grab)
+{
+}
+
+static void
+noop_grab_axis(struct weston_pointer_grab *grab,
+	       const struct timespec *time,
+	       struct weston_pointer_axis_event *event)
+{
+}
+
+static void
+noop_grab_axis_source(struct weston_pointer_grab *grab,
+		      uint32_t source)
+{
+}
+
+static void
+noop_grab_frame(struct weston_pointer_grab *grab)
+{
+}
+
+static void
+constrain_position(struct TestServerMoveGrab *move, int *cx, int *cy)
+{
+	struct TestServerSurface *shsurf = move->base.shsurf;
+	struct weston_surface *surface =
+		weston_desktop_surface_get_surface(shsurf->desktop_surface);
+	struct weston_pointer *pointer = move->base.grab.pointer;
+	int x, y, bottom;
+	const int safety = 50;
+	pixman_rectangle32_t area;
+	struct weston_geometry geometry;
+
+	x = wl_fixed_to_int(pointer->x + move->dx);
+	y = wl_fixed_to_int(pointer->y + move->dy);
+
+	*cx = x;
+	*cy = y;
+}
+
+static void
+move_grab_motion(struct weston_pointer_grab *grab,
+		 const struct timespec *time,
+		 struct weston_pointer_motion_event *event)
+{
+	struct TestServerMoveGrab *move = (struct TestServerMoveGrab *) grab;
+  //move = wl_container_of (wl_container_of (grab, move, grab),
+	struct weston_pointer *pointer = grab->pointer;
+	struct TestServerSurface *shsurf = move->base.shsurf;
+	struct weston_surface *surface;
+	int cx, cy;
+
+	weston_pointer_move(pointer, event);
+	if (!shsurf)
+		return;
+
+	surface = weston_desktop_surface_get_surface(shsurf->desktop_surface);
+
+	constrain_position(move, &cx, &cy);
+
+	weston_view_set_position(shsurf->view, cx, cy);
+
+	weston_compositor_schedule_repaint(surface->compositor);
+}
+
+static void
+test_server_grab_end(struct TestServerGrab *grab)
+{
+	weston_pointer_end_grab(grab->grab.pointer);
+}
+
+static void
+move_grab_button(struct weston_pointer_grab *grab,
+		 const struct timespec *time, uint32_t button, uint32_t state_w)
+{
+	struct TestServerGrab *shell_grab = container_of(grab, struct TestServerGrab,
+						    grab);
+	struct weston_pointer *pointer = grab->pointer;
+	enum wl_pointer_button_state state = state_w;
+
+	if (pointer->button_count == 0 &&
+	    state == WL_POINTER_BUTTON_STATE_RELEASED) {
+		test_server_grab_end(shell_grab);
+		free(grab);
+	}
+}
+
+static void
+move_grab_cancel(struct weston_pointer_grab *grab)
+{
+  struct TestServerGrab *shell_grab =
+        container_of(grab, struct TestServerGrab, grab);
+
+	test_server_grab_end(shell_grab);
+	free(grab);
+}
+
+static const struct weston_pointer_grab_interface move_grab_interface = {
+	noop_grab_focus,
+	move_grab_motion,
+	move_grab_button,
+	noop_grab_axis,
+	noop_grab_axis_source,
+	noop_grab_frame,
+	move_grab_cancel,
+};
+
+static void
 desktop_surface_move (struct weston_desktop_surface *desktop_surface,
                       struct weston_seat            *seat,
                       uint32_t                      *serial,
@@ -135,17 +276,26 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
   struct weston_pointer *pointer = weston_seat_get_pointer (seat);
   struct TestServer *server = data;
   struct TestServerSurface *shsurf = weston_desktop_surface_get_user_data (desktop_surface);
+  struct TestServerMoveGrab *move;
   int x, y, dx, dy;
 
-  dx = wl_fixed_to_int (shsurf->view->geometry.x - pointer->grab_x);
-  dy = wl_fixed_to_int (shsurf->view->geometry.y - pointer->grab_y);
+  move = malloc (sizeof (*move));
 
-  x = wl_fixed_to_int (pointer->x + dx);
-  y = wl_fixed_to_int (pointer->y + dy);
+  move->dx = wl_fixed_from_double (shsurf->view->geometry.x) - pointer->grab_x;
+  move->dy = wl_fixed_from_double (shsurf->view->geometry.y) - pointer->grab_y;
 
-  weston_view_set_position (shsurf->view, x, y);
-  weston_surface_damage (shsurf->surface);
-  weston_compositor_schedule_repaint (server->compositor);
+  test_server_grab_start (&move->base, &move_grab_interface, shsurf,
+                          pointer);
+
+  //x = wl_fixed_to_int (pointer->x + move->dx);
+  //y = wl_fixed_to_int (pointer->y + move->dy);
+
+  //weston_log ("x = %d", x);
+  //weston_log ("y = %d", y);
+
+  //weston_view_set_position (shsurf->view, x, y);
+  //weston_surface_damage (shsurf->surface);
+  //weston_compositor_schedule_repaint (server->compositor);
 }
 
 static int vlog (const char *fmt,
