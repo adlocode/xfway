@@ -89,8 +89,6 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 
   weston_layer_entry_insert (&server->surfaces_layer.view_list, &self->view->layer_link);
 
-  weston_view_set_position (self->view, 0, 0);
-
   weston_surface_damage (self->surface);
   weston_compositor_schedule_repaint (server->compositor);
 
@@ -124,6 +122,36 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
   weston_view_destroy (self->view);
   weston_desktop_surface_set_user_data (desktop_surface, NULL);
   free (self);
+}
+
+static void
+map(struct TestServer *shell, struct ShellSurface *shsurf,
+    int32_t sx, int32_t sy)
+{
+
+	weston_view_update_transform(shsurf->view);
+
+}
+
+static void
+desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
+			  int32_t sx, int32_t sy, void *data)
+{
+	struct ShellSurface *shsurf =
+		weston_desktop_surface_get_user_data(desktop_surface);
+	struct weston_surface *surface =
+		weston_desktop_surface_get_surface(desktop_surface);
+	struct weston_view *view = shsurf->view;
+	struct TestServer *shell = data;
+	bool was_fullscreen;
+	bool was_maximized;
+
+	if (surface->width == 0)
+		return;
+
+	if (!weston_surface_is_mapped(surface))
+		map(shell, shsurf, sx, sy);
+
 }
 
 static void click_to_activate_binding (struct weston_pointer *pointer,
@@ -493,6 +521,7 @@ static const struct weston_desktop_api desktop_api =
 
   .surface_added = surface_added,
   .surface_removed = surface_removed,
+  .committed = desktop_surface_committed,
   .move = desktop_surface_move,
   .resize = desktop_surface_resize,
 
