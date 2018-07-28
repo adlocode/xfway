@@ -44,7 +44,7 @@
 	(type *)( (char *)__mptr - offsetof(type,member) );})
 #endif
 
-struct TestServerSurface
+struct ShellSurface
 {
   struct wl_signal destroy_signal;
   struct weston_desktop_surface *desktop_surface;
@@ -57,16 +57,16 @@ struct TestServerSurface
   struct TestServer *server;
 };
 
-struct TestServerGrab
+struct ShellGrab
 {
   struct weston_pointer_grab grab;
-  struct TestServerSurface *shsurf;
+  struct ShellSurface *shsurf;
   struct wl_listener shsurf_destroy_listener;
 };
 
-struct TestServerMoveGrab
+struct ShellMoveGrab
 {
-  struct TestServerGrab base;
+  struct ShellGrab base;
   wl_fixed_t dx, dy;
 };
 
@@ -75,9 +75,9 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 {
   struct TestServer *server = user_data;
 
-  struct TestServerSurface *self;
+  struct ShellSurface *self;
 
-  self = calloc (1, sizeof (struct TestServerSurface));
+  self = calloc (1, sizeof (struct ShellSurface));
 
   self->desktop_surface = desktop_surface;
   self->server = server;
@@ -111,7 +111,7 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
 {
   struct TestServer *server = user_data;
 
-  struct TestServerSurface *self = weston_desktop_surface_get_user_data (desktop_surface);
+  struct ShellSurface *self = weston_desktop_surface_get_user_data (desktop_surface);
 
   if (!self)
     return;
@@ -130,7 +130,7 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
                                        void                  *data)
 {
   struct TestServer *server = data;
-  struct TestServerSurface *shsurf;
+  struct ShellSurface *shsurf;
   struct weston_seat *s;
   struct weston_surface *main_surface;
 
@@ -158,18 +158,18 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
 static void
 destroy_shell_grab_shsurf(struct wl_listener *listener, void *data)
 {
-	struct TestServerGrab *grab;
+	struct ShellGrab *grab;
 
-	grab = container_of(listener, struct TestServerGrab,
+	grab = container_of(listener, struct ShellGrab,
 			    shsurf_destroy_listener);
 
 	grab->shsurf = NULL;
 }
 
 static void
-test_server_grab_start (struct TestServerGrab                     *grab,
+shell_grab_start (struct ShellGrab                     *grab,
                         const struct weston_pointer_grab_interface *interface,
-                        struct TestServerSurface                   *shsurf,
+                        struct ShellSurface                   *shsurf,
                         struct weston_pointer                      *pointer)
 {
   weston_seat_break_desktop_grabs (pointer->seat);
@@ -208,9 +208,9 @@ noop_grab_frame(struct weston_pointer_grab *grab)
 }
 
 static void
-constrain_position(struct TestServerMoveGrab *move, int *cx, int *cy)
+constrain_position(struct ShellMoveGrab *move, int *cx, int *cy)
 {
-	struct TestServerSurface *shsurf = move->base.shsurf;
+	struct ShellSurface *shsurf = move->base.shsurf;
 	struct weston_surface *surface =
 		weston_desktop_surface_get_surface(shsurf->desktop_surface);
 	struct weston_pointer *pointer = move->base.grab.pointer;
@@ -231,9 +231,9 @@ move_grab_motion(struct weston_pointer_grab *grab,
 		 const struct timespec *time,
 		 struct weston_pointer_motion_event *event)
 {
-	struct TestServerMoveGrab *move = (struct TestServerMoveGrab *) grab;
+	struct ShellMoveGrab *move = (struct ShellMoveGrab *) grab;
 	struct weston_pointer *pointer = grab->pointer;
-	struct TestServerSurface *shsurf = move->base.shsurf;
+	struct ShellSurface *shsurf = move->base.shsurf;
 	struct weston_surface *surface;
 	int cx, cy;
 
@@ -251,7 +251,7 @@ move_grab_motion(struct weston_pointer_grab *grab,
 }
 
 static void
-test_server_grab_end(struct TestServerGrab *grab)
+shell_grab_end(struct ShellGrab *grab)
 {
   if (grab->shsurf)
   {
@@ -265,14 +265,14 @@ static void
 move_grab_button(struct weston_pointer_grab *grab,
 		 const struct timespec *time, uint32_t button, uint32_t state_w)
 {
-	struct TestServerGrab *shell_grab = container_of(grab, struct TestServerGrab,
+	struct ShellGrab *shell_grab = container_of(grab, struct ShellGrab,
 						    grab);
 	struct weston_pointer *pointer = grab->pointer;
 	enum wl_pointer_button_state state = state_w;
 
 	if (pointer->button_count == 0 &&
 	    state == WL_POINTER_BUTTON_STATE_RELEASED) {
-		test_server_grab_end(shell_grab);
+		shell_grab_end(shell_grab);
 		free(grab);
 	}
 }
@@ -280,10 +280,10 @@ move_grab_button(struct weston_pointer_grab *grab,
 static void
 move_grab_cancel(struct weston_pointer_grab *grab)
 {
-  struct TestServerGrab *shell_grab =
-        container_of(grab, struct TestServerGrab, grab);
+  struct ShellGrab *shell_grab =
+        container_of(grab, struct ShellGrab, grab);
 
-	test_server_grab_end(shell_grab);
+	shell_grab_end(shell_grab);
 	free(grab);
 }
 
@@ -305,8 +305,8 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
 {
   struct weston_pointer *pointer = weston_seat_get_pointer (seat);
   struct TestServer *server = data;
-  struct TestServerSurface *shsurf = weston_desktop_surface_get_user_data (desktop_surface);
-  struct TestServerMoveGrab *move;
+  struct ShellSurface *shsurf = weston_desktop_surface_get_user_data (desktop_surface);
+  struct ShellMoveGrab *move;
   int x, y, dx, dy;
 
   if (!shsurf)
@@ -320,12 +320,12 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
   move->dx = wl_fixed_from_double (shsurf->view->geometry.x) - pointer->grab_x;
   move->dy = wl_fixed_from_double (shsurf->view->geometry.y) - pointer->grab_y;
 
-  test_server_grab_start (&move->base, &move_grab_interface, shsurf,
+  shell_grab_start (&move->base, &move_grab_interface, shsurf,
                           pointer);
 }
 
-struct TestServerResizeGrab {
-	struct TestServerGrab base;
+struct ShellResizeGrab {
+	struct ShellGrab base;
 	uint32_t edges;
 	int32_t width, height;
 };
@@ -335,9 +335,9 @@ resize_grab_motion(struct weston_pointer_grab *grab,
 		   const struct timespec *time,
 		   struct weston_pointer_motion_event *event)
 {
-	struct TestServerResizeGrab *resize = (struct TestServerResizeGrab *) grab;
+	struct ShellResizeGrab *resize = (struct ShellResizeGrab *) grab;
 	struct weston_pointer *pointer = grab->pointer;
-	struct TestServerSurface *shsurf = resize->base.shsurf;
+	struct ShellSurface *shsurf = resize->base.shsurf;
 	int32_t width, height;
 	struct weston_size min_size, max_size;
 	wl_fixed_t from_x, from_y;
@@ -390,7 +390,7 @@ resize_grab_button(struct weston_pointer_grab *grab,
 		   const struct timespec *time,
 		   uint32_t button, uint32_t state_w)
 {
-	struct TestServerResizeGrab *resize = (struct TestServerResizeGrab *) grab;
+	struct ShellResizeGrab *resize = (struct ShellResizeGrab *) grab;
 	struct weston_pointer *pointer = grab->pointer;
 	enum wl_pointer_button_state state = state_w;
 	struct weston_desktop_surface *desktop_surface =
@@ -399,7 +399,7 @@ resize_grab_button(struct weston_pointer_grab *grab,
 	if (pointer->button_count == 0 &&
 	    state == WL_POINTER_BUTTON_STATE_RELEASED) {
 		weston_desktop_surface_set_resizing(desktop_surface, false);
-		test_server_grab_end(&resize->base);
+		shell_grab_end(&resize->base);
 		free(grab);
 	}
 }
@@ -407,12 +407,12 @@ resize_grab_button(struct weston_pointer_grab *grab,
 static void
 resize_grab_cancel(struct weston_pointer_grab *grab)
 {
-	struct TestServerResizeGrab *resize = (struct TestServerResizeGrab *) grab;
+	struct ShellResizeGrab *resize = (struct ShellResizeGrab *) grab;
 	struct weston_desktop_surface *desktop_surface =
 		resize->base.shsurf->desktop_surface;
 
 	weston_desktop_surface_set_resizing(desktop_surface, false);
-	test_server_grab_end(&resize->base);
+	shell_grab_end(&resize->base);
 	free(grab);
 }
 
@@ -436,7 +436,7 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
                         void                             *server)
 {
   struct weston_pointer *pointer = weston_seat_get_pointer(seat);
-	struct TestServerSurface *shsurf =
+	struct ShellSurface *shsurf =
 		weston_desktop_surface_get_user_data(desktop_surface);
 	struct weston_surface *surface =
 		weston_desktop_surface_get_surface(shsurf->desktop_surface);
@@ -453,7 +453,7 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
 	if (focus != surface)
 		return;
 
-  struct TestServerResizeGrab *resize;
+  struct ShellResizeGrab *resize;
 	const unsigned resize_topbottom =
 		WL_SHELL_SURFACE_RESIZE_TOP | WL_SHELL_SURFACE_RESIZE_BOTTOM;
 	const unsigned resize_leftright =
@@ -482,7 +482,7 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
 
 	shsurf->resize_edges = edges;
 	weston_desktop_surface_set_resizing(shsurf->desktop_surface, true);
-	test_server_grab_start(&resize->base, &resize_grab_interface, shsurf,
+	shell_grab_start(&resize->base, &resize_grab_interface, shsurf,
 			 pointer);
 }
 
