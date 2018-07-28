@@ -99,7 +99,9 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   struct weston_seat *s;
   wl_list_for_each (s, &server->compositor->seat_list, link)
     {
-      weston_seat_set_keyboard_focus (s, self->surface);
+      weston_view_activate (self->view, s,
+                            WESTON_ACTIVATE_FLAG_CLICKED |
+                            WESTON_ACTIVATE_FLAG_CONFIGURE);
 
     }
 
@@ -139,19 +141,18 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
                                                 (main_surface));
   struct weston_surface *surface = weston_desktop_surface_get_surface (shsurf->desktop_surface);
 
-  wl_list_for_each (s, &server->compositor->seat_list, link)
-    {
-      weston_view_activate (pointer->focus, s,
+  if (&server->surfaces_layer.view_list == &shsurf->view->layer_link)
+    return;
+
+      weston_view_activate (pointer->focus, pointer->seat,
                             WESTON_ACTIVATE_FLAG_CLICKED |
                             WESTON_ACTIVATE_FLAG_CONFIGURE);
-      weston_seat_set_keyboard_focus (s, pointer->focus->surface);
       weston_view_geometry_dirty (shsurf->view);
       weston_layer_entry_remove (&pointer->focus->layer_link);
       weston_layer_entry_insert (&server->surfaces_layer.view_list, &pointer->focus->layer_link);
       weston_view_geometry_dirty (shsurf->view);
       weston_surface_damage (main_surface);
       weston_desktop_surface_propagate_layer (shsurf->desktop_surface);
-    }
 
 }
 
