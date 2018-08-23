@@ -56,7 +56,35 @@ static void new_output_notify (struct wl_listener *listener,
 
 }
 
+static int load_wayland_backend (struct TestServer *server)
+{
 
+  struct weston_wayland_backend_config config = {{0, }};
+  int ret = 0;
+
+	config.base.struct_version = WESTON_WAYLAND_BACKEND_CONFIG_VERSION;
+	config.base.struct_size = sizeof (struct weston_wayland_backend_config);
+
+	config.cursor_size = 32;
+	config.display_name = 0;
+	config.use_pixman = 0;
+	config.sprawl = 0;
+	config.fullscreen = 0;
+	config.cursor_theme = NULL;
+
+
+	ret = weston_compositor_load_backend (server->compositor, WESTON_BACKEND_WAYLAND, &config.base);
+
+  server->api = weston_windowed_output_get_api (server->compositor);
+  server->new_output.notify = new_output_notify;
+  wl_signal_add (&server->compositor->output_pending_signal, &server->new_output);
+
+  server->api->output_create (server->compositor, "W1");
+
+  weston_pending_output_coldplug (server->compositor);
+
+  return ret;
+}
 
 int main (int    argc,
           char **argv)
@@ -84,28 +112,7 @@ int main (int    argc,
 	server->compositor->repaint_msec = 16;
 	server->compositor->idle_time = 300;
 
-	struct weston_wayland_backend_config config = {{0, }};
-
-	config.base.struct_version = WESTON_WAYLAND_BACKEND_CONFIG_VERSION;
-	config.base.struct_size = sizeof (struct weston_wayland_backend_config);
-
-	config.cursor_size = 32;
-	config.display_name = 0;
-	config.use_pixman = 0;
-	config.sprawl = 0;
-	config.fullscreen = 0;
-	config.cursor_theme = NULL;
-
-
-	ret = weston_compositor_load_backend (server->compositor, WESTON_BACKEND_WAYLAND, &config.base);
-
-  server->api = weston_windowed_output_get_api (server->compositor);
-  server->new_output.notify = new_output_notify;
-  wl_signal_add (&server->compositor->output_pending_signal, &server->new_output);
-
-  server->api->output_create (server->compositor, "W1");
-
-  weston_pending_output_coldplug (server->compositor);
+  ret = load_wayland_backend (server);
 
   weston_layer_init (&server->background_layer, server->compositor);
   weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
