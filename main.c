@@ -112,7 +112,18 @@ int main (int    argc,
 	server->compositor->repaint_msec = 16;
 	server->compositor->idle_time = 300;
 
-  ret = load_wayland_backend (server);
+  enum weston_compositor_backend backend = WESTON_BACKEND_DRM;
+  if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET"))
+		backend = WESTON_BACKEND_WAYLAND;
+
+  switch (backend)
+    {
+    case WESTON_BACKEND_WAYLAND:
+    ret = load_wayland_backend (server);
+      break;
+    default:
+      return 1;
+    }
 
   weston_layer_init (&server->background_layer, server->compositor);
   weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
