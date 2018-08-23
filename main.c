@@ -43,7 +43,21 @@ static int vlog_continue (const char *fmt,
   return vfprintf (stderr, fmt, argp);
 }
 
-static void new_output_notify (struct wl_listener *listener,
+static void new_output_notify_drm (struct wl_listener *listener,
+                            void               *data)
+{
+  struct weston_output *output = data;
+  struct TestServer *server = wl_container_of (listener, server, new_output);
+
+  server->api.drm->set_mode (output, WESTON_DRM_BACKEND_OUTPUT_PREFERRED, NULL);
+  server->api.drm->set_gbm_format (output, NULL);
+  server->api.drm->set_seat (output, NULL);
+  weston_output_set_scale (output, 1);
+  weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
+  weston_output_enable (output);
+}
+
+static void new_output_notify_wayland (struct wl_listener *listener,
                             void               *data)
 {
   struct weston_output *output = data;
@@ -51,15 +65,33 @@ static void new_output_notify (struct wl_listener *listener,
 
   weston_output_set_scale (output, 1);
   weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
-  server->api->output_set_size (output, 800, 600);
+  server->api.windowed->output_set_size (output, 800, 600);
   weston_output_enable (output);
 
+}
+
+static int load_drm_backend (struct TestServer *server)
+{
+  struct weston_drm_backend_config config = {{ 0, }};
+  int ret = 0;
+
+  config.base.struct_version = WESTON_DRM_BACKEND_CONFIG_VERSION;
+	config.base.struct_size = sizeof (struct weston_drm_backend_config);
+
+  ret = weston_compositor_load_backend (server->compositor, WESTON_BACKEND_DRM, &config.base);
+
+  server->api.drm = weston_drm_output_get_api (server->compositor);
+  if (server->api.drm == NULL)
+    return 1;
+  server->new_output.notify = new_output_notify_drm;
+
+  return ret;
 }
 
 static int load_wayland_backend (struct TestServer *server)
 {
 
-  struct weston_wayland_backend_config config = {{0, }};
+  struct weston_wayland_backend_config config = {{ 0, }};
   int ret = 0;
 
 	config.base.struct_version = WESTON_WAYLAND_BACKEND_CONFIG_VERSION;
@@ -75,13 +107,10 @@ static int load_wayland_backend (struct TestServer *server)
 
 	ret = weston_compositor_load_backend (server->compositor, WESTON_BACKEND_WAYLAND, &config.base);
 
-  server->api = weston_windowed_output_get_api (server->compositor);
-  server->new_output.notify = new_output_notify;
-  wl_signal_add (&server->compositor->output_pending_signal, &server->new_output);
+  server->api.windowed = weston_windowed_output_get_api (server->compositor);
+  server->new_output.notify = new_output_notify_wayland;
 
-  server->api->output_create (server->compositor, "W1");
-
-  weston_pending_output_coldplug (server->compositor);
+  server->api.windowed->output_create (server->compositor, "W1");
 
   return ret;
 }
@@ -118,12 +147,22 @@ int main (int    argc,
 
   switch (backend)
     {
+    case WESTON_BACKEND_DRM:
+      ret = load_drm_backend (server);
+      if (ret != 0)
+        return ret;
+      break;
     case WESTON_BACKEND_WAYLAND:
     ret = load_wayland_backend (server);
+      if (ret != 0)
+        return ret;
       break;
     default:
       return 1;
     }
+
+  wl_signal_add (&server->compositor->output_pending_signal, &server->new_output);
+  weston_pending_output_coldplug (server->compositor);
 
   weston_layer_init (&server->background_layer, server->compositor);
   weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);

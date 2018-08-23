@@ -31,7 +31,11 @@ struct TestServer
 {
   struct weston_compositor *compositor;
   struct wl_listener new_output;
-  const struct weston_windowed_output_api *api;
+  union
+    {
+      const struct weston_drm_output_api *drm;
+      const struct weston_windowed_output_api *windowed;
+    } api;
   struct weston_layer background_layer;
   struct weston_surface *background;
   struct weston_view *background_view;
