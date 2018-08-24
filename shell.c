@@ -154,6 +154,16 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 
 }
 
+static struct weston_layer_entry *
+shell_surface_calculate_layer_link (struct ShellSurface *shsurf)
+{
+
+	/* Move the surface to a normal workspace layer so that surfaces
+	 * which were previously fullscreen or transient are no longer
+	 * rendered on top. */
+	return &shsurf->server->surfaces_layer.view_list;
+}
+
 static void click_to_activate_binding (struct weston_pointer *pointer,
                                        const struct timespec *time,
                                        uint32_t               button,
@@ -163,21 +173,26 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
   struct ShellSurface *shsurf;
   struct weston_seat *s;
   struct weston_surface *main_surface;
+  struct weston_layer_entry *new_layer_link;
 
   main_surface = weston_surface_get_main_surface (pointer->focus->surface);
   shsurf = weston_desktop_surface_get_user_data (weston_surface_get_desktop_surface
                                                 (main_surface));
   struct weston_surface *surface = weston_desktop_surface_get_surface (shsurf->desktop_surface);
 
-  if (&server->surfaces_layer.view_list == &shsurf->view->layer_link)
+  new_layer_link = shell_surface_calculate_layer_link (shsurf);
+
+  if (new_layer_link == NULL)
+    return;
+  if (new_layer_link == &shsurf->view->layer_link)
     return;
 
       weston_view_activate (pointer->focus, pointer->seat,
                             WESTON_ACTIVATE_FLAG_CLICKED |
                             WESTON_ACTIVATE_FLAG_CONFIGURE);
       weston_view_geometry_dirty (shsurf->view);
-      weston_layer_entry_remove (&pointer->focus->layer_link);
-      weston_layer_entry_insert (&server->surfaces_layer.view_list, &pointer->focus->layer_link);
+      weston_layer_entry_remove (&shsurf->view->layer_link);
+      weston_layer_entry_insert (new_layer_link, &shsurf->view->layer_link);
       weston_view_geometry_dirty (shsurf->view);
       weston_surface_damage (main_surface);
       weston_desktop_surface_propagate_layer (shsurf->desktop_surface);
