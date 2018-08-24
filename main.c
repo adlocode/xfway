@@ -55,6 +55,14 @@ static void new_output_notify_drm (struct wl_listener *listener,
   weston_output_set_scale (output, 1);
   weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
   weston_output_enable (output);
+
+  weston_layer_init (&server->background_layer, server->compositor);
+  weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
+  server->background = weston_surface_create (server->compositor);
+  weston_surface_set_size (server->background, output->width, output->height);
+  weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
+  server->background_view = weston_view_create (server->background);
+  weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
 }
 
 static void new_output_notify_wayland (struct wl_listener *listener,
@@ -67,6 +75,14 @@ static void new_output_notify_wayland (struct wl_listener *listener,
   weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
   server->api.windowed->output_set_size (output, 800, 600);
   weston_output_enable (output);
+
+  weston_layer_init (&server->background_layer, server->compositor);
+  weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
+  server->background = weston_surface_create (server->compositor);
+  weston_surface_set_size (server->background, output->width, output->height);
+  weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
+  server->background_view = weston_view_create (server->background);
+  weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
 
 }
 
@@ -123,6 +139,7 @@ int main (int    argc,
 	int ret = 0;
   const char *socket_name = NULL;
   struct TestServer *server;
+  struct weston_output *output;
 
   server = malloc (sizeof(struct TestServer));
 
@@ -164,13 +181,7 @@ int main (int    argc,
   wl_signal_add (&server->compositor->output_pending_signal, &server->new_output);
   weston_pending_output_coldplug (server->compositor);
 
-  weston_layer_init (&server->background_layer, server->compositor);
-  weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
-  server->background = weston_surface_create (server->compositor);
-  weston_surface_set_size (server->background, 8096, 8096);
-  weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
-  server->background_view = weston_view_create (server->background);
-  weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
+
 
   test_server_shell_init (server);
 
