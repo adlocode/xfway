@@ -70,6 +70,17 @@ struct ShellMoveGrab
   wl_fixed_t dx, dy;
 };
 
+struct ShellSurface *
+get_shell_surface(struct weston_surface *surface)
+{
+	if (weston_surface_is_desktop_surface(surface)) {
+		struct weston_desktop_surface *desktop_surface =
+			weston_surface_get_desktop_surface(surface);
+		return weston_desktop_surface_get_user_data(desktop_surface);
+	}
+	return NULL;
+}
+
 void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *user_data)
 {
@@ -172,8 +183,11 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
   struct weston_layer_entry *new_layer_link;
 
   main_surface = weston_surface_get_main_surface (pointer->focus->surface);
-  shsurf = weston_desktop_surface_get_user_data (weston_surface_get_desktop_surface
-                                                (main_surface));
+  shsurf = get_shell_surface (main_surface);
+
+  if (shsurf == NULL)
+    return;
+
   struct weston_surface *surface = weston_desktop_surface_get_surface (shsurf->desktop_surface);
 
   new_layer_link = shell_surface_calculate_layer_link (shsurf);
@@ -192,7 +206,6 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
       weston_view_geometry_dirty (shsurf->view);
       weston_surface_damage (main_surface);
       weston_desktop_surface_propagate_layer (shsurf->desktop_surface);
-
 }
 
 static void
