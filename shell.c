@@ -157,10 +157,6 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 static struct weston_layer_entry *
 shell_surface_calculate_layer_link (struct ShellSurface *shsurf)
 {
-
-	/* Move the surface to a normal workspace layer so that surfaces
-	 * which were previously fullscreen or transient are no longer
-	 * rendered on top. */
 	return &shsurf->server->surfaces_layer.view_list;
 }
 
