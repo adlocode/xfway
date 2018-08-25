@@ -158,6 +158,9 @@ int main (int    argc,
 	server->compositor->repaint_msec = 16;
 	server->compositor->idle_time = 300;
 
+  server->compositor->kb_repeat_rate = 40;
+  server->compositor->kb_repeat_delay = 400;
+
   enum weston_compositor_backend backend = WESTON_BACKEND_DRM;
   if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET"))
 		backend = WESTON_BACKEND_WAYLAND;
