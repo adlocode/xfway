@@ -55,6 +55,8 @@ struct ShellSurface
   uint32_t resize_edges;
 
   struct TestServer *server;
+
+  bool maximized;
 };
 
 struct ShellGrab
@@ -136,10 +138,28 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
 }
 
 static void
+set_maximized_position (struct ShellSurface *shsurf)
+{
+	pixman_rectangle32_t area;
+	struct weston_geometry geometry;
+
+  area.x = shsurf->surface->output->x;
+  area.y = shsurf->surface->output->y;
+
+	//get_output_work_area(shell, shsurf->output, &area);
+	geometry = weston_desktop_surface_get_geometry(shsurf->desktop_surface);
+
+	weston_view_set_position(shsurf->view,
+				 area.x - geometry.x,
+				 area.y - geometry.y);
+}
+
+static void
 map(struct TestServer *shell, struct ShellSurface *shsurf,
     int32_t sx, int32_t sy)
 {
-
+  if (shsurf->maximized)
+    set_maximized_position (shsurf);
 	weston_view_update_transform(shsurf->view);
 
 }
@@ -159,6 +179,9 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 
 	if (surface->width == 0)
 		return;
+
+  shsurf->maximized =
+    weston_desktop_surface_get_maximized (desktop_surface);
 
 	if (!weston_surface_is_mapped(surface))
 		map(shell, shsurf, sx, sy);
