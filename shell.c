@@ -54,7 +54,7 @@ struct ShellSurface
 
   uint32_t resize_edges;
 
-  struct TestServer *server;
+  struct XfwayServer *server;
 
   bool maximized;
 };
@@ -86,7 +86,7 @@ get_shell_surface(struct weston_surface *surface)
 void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *user_data)
 {
-  struct TestServer *server = user_data;
+  struct XfwayServer *server = user_data;
 
   struct ShellSurface *self;
 
@@ -122,7 +122,7 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 void surface_removed (struct weston_desktop_surface *desktop_surface,
                       void                   *user_data)
 {
-  struct TestServer *server = user_data;
+  struct XfwayServer *server = user_data;
 
   struct ShellSurface *self = weston_desktop_surface_get_user_data (desktop_surface);
 
@@ -155,7 +155,7 @@ set_maximized_position (struct ShellSurface *shsurf)
 }
 
 static void
-map(struct TestServer *shell, struct ShellSurface *shsurf,
+map(struct XfwayServer *shell, struct ShellSurface *shsurf,
     int32_t sx, int32_t sy)
 {
   if (shsurf->maximized)
@@ -173,7 +173,7 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 	struct weston_surface *surface =
 		weston_desktop_surface_get_surface(desktop_surface);
 	struct weston_view *view = shsurf->view;
-	struct TestServer *shell = data;
+	struct XfwayServer *shell = data;
 	bool was_fullscreen;
 	bool was_maximized;
 
@@ -199,7 +199,7 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
                                        uint32_t               button,
                                        void                  *data)
 {
-  struct TestServer *server = data;
+  struct XfwayServer *server = data;
   struct ShellSurface *shsurf;
   struct weston_seat *s;
   struct weston_surface *main_surface;
@@ -380,7 +380,7 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
                       void                          *data)
 {
   struct weston_pointer *pointer = weston_seat_get_pointer (seat);
-  struct TestServer *server = data;
+  struct XfwayServer *server = data;
   struct ShellSurface *shsurf = weston_desktop_surface_get_user_data (desktop_surface);
   struct ShellMoveGrab *move;
   int x, y, dx, dy;
@@ -607,7 +607,7 @@ static const struct weston_desktop_api desktop_api =
 
 };
 
-void test_server_shell_init (struct TestServer *server)
+void xfway_server_shell_init (struct XfwayServer *server)
 {
   struct weston_desktop *desktop;
 

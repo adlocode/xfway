@@ -47,7 +47,7 @@ static void new_output_notify_drm (struct wl_listener *listener,
                             void               *data)
 {
   struct weston_output *output = data;
-  struct TestServer *server = wl_container_of (listener, server, new_output);
+  struct XfwayServer *server = wl_container_of (listener, server, new_output);
 
   server->api.drm->set_mode (output, WESTON_DRM_BACKEND_OUTPUT_PREFERRED, NULL);
   server->api.drm->set_gbm_format (output, NULL);
@@ -69,7 +69,7 @@ static void new_output_notify_wayland (struct wl_listener *listener,
                             void               *data)
 {
   struct weston_output *output = data;
-  struct TestServer *server = wl_container_of (listener, server, new_output);
+  struct XfwayServer *server = wl_container_of (listener, server, new_output);
 
   weston_output_set_scale (output, 1);
   weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
@@ -86,7 +86,7 @@ static void new_output_notify_wayland (struct wl_listener *listener,
 
 }
 
-static int load_drm_backend (struct TestServer *server)
+static int load_drm_backend (struct XfwayServer *server)
 {
   struct weston_drm_backend_config config = {{ 0, }};
   int ret = 0;
@@ -104,7 +104,7 @@ static int load_drm_backend (struct TestServer *server)
   return ret;
 }
 
-static int load_wayland_backend (struct TestServer *server)
+static int load_wayland_backend (struct XfwayServer *server)
 {
 
   struct weston_wayland_backend_config config = {{ 0, }};
@@ -138,10 +138,10 @@ int main (int    argc,
 	struct weston_compositor *ec = NULL;
 	int ret = 0;
   const char *socket_name = NULL;
-  struct TestServer *server;
+  struct XfwayServer *server;
   struct weston_output *output;
 
-  server = malloc (sizeof(struct TestServer));
+  server = malloc (sizeof(struct XfwayServer));
 
 	display = wl_display_create ();
 	server->compositor = weston_compositor_create (display, NULL);
@@ -186,7 +186,7 @@ int main (int    argc,
 
 
 
-  test_server_shell_init (server);
+  xfway_server_shell_init (server);
 
   socket_name = wl_display_add_socket_auto (display);
   if (socket_name)

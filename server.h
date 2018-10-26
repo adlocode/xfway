@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <linux/input.h>
 
-struct TestServer
+struct XfwayServer
 {
   struct weston_compositor *compositor;
   struct wl_listener new_output;
