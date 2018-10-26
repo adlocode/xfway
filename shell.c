@@ -563,18 +563,15 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
 }
 
 static void
-desktop_surface_maximized_requested (struct weston_desktop_surface *desktop_surface,
-                                     bool                           maximized,
-                                     void                          *server)
+set_maximized (struct ShellSurface *shsurf,
+               bool                 maximized)
 {
-  struct ShellSurface *shsurf =
-          weston_desktop_surface_get_user_data (desktop_surface);
   struct weston_surface *surface =
-          weston_desktop_surface_get_surface (desktop_surface);
+          weston_desktop_surface_get_surface (shsurf->desktop_surface);
 
   int32_t width = 0, height = 0;
 
-  weston_desktop_surface_set_maximized (desktop_surface, maximized);
+  weston_desktop_surface_set_maximized (shsurf->desktop_surface, maximized);
 
   if (maximized)
     {
@@ -582,7 +579,19 @@ desktop_surface_maximized_requested (struct weston_desktop_surface *desktop_surf
       height = surface->output->height;
     }
 
-  weston_desktop_surface_set_size (desktop_surface, width, height);
+  weston_desktop_surface_set_size (shsurf->desktop_surface, width, height);
+}
+
+static void
+desktop_surface_maximized_requested (struct weston_desktop_surface *desktop_surface,
+                                     bool                           maximized,
+                                     void                          *server)
+{
+  struct ShellSurface *shsurf =
+          weston_desktop_surface_get_user_data (desktop_surface);
+
+  set_maximized (shsurf, maximized);
+
 }
 
 static const struct weston_desktop_api desktop_api =
