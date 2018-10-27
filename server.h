@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <linux/input.h>
 
-struct XfwayServer
+struct _ScreenInfoWayland
 {
   struct weston_compositor *compositor;
   struct wl_listener new_output;
@@ -41,3 +41,5 @@ struct XfwayServer
   struct weston_view *background_view;
   struct weston_layer surfaces_layer;
 };
+
+typedef struct _ScreenInfoWayland ScreenInfoWayland;

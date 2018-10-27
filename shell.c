@@ -44,7 +44,7 @@
 	(type *)( (char *)__mptr - offsetof(type,member) );})
 #endif
 
-struct ShellSurface
+struct _CWindowWayland
 {
   struct wl_signal destroy_signal;
   struct weston_desktop_surface *desktop_surface;
@@ -57,17 +57,19 @@ struct ShellSurface
 
   uint32_t resize_edges;
 
-  struct XfwayServer *server;
+  ScreenInfoWayland *server;
 
   struct weston_output *output;
 
   bool maximized;
 };
 
+typedef struct _CWindowWayland CWindowWayland;
+
 struct ShellGrab
 {
   struct weston_pointer_grab grab;
-  struct ShellSurface *shsurf;
+  CWindowWayland *cw;
   struct wl_listener shsurf_destroy_listener;
 };
 
@@ -79,7 +81,7 @@ struct ShellMoveGrab
 
 static void
 weston_view_set_initial_position(struct weston_view *view,
-				 struct XfwayServer *shell)
+				 ScreenInfoWayland *shell)
 {
 	struct weston_compositor *compositor = shell->compositor;
 	int ix = 0, iy = 0;
@@ -147,23 +149,23 @@ get_default_output(struct weston_compositor *compositor)
 }
 
 static void
-unset_maximized(struct ShellSurface *shsurf)
+unset_maximized(CWindowWayland *cw)
 {
 	struct weston_surface *surface =
-		weston_desktop_surface_get_surface(shsurf->desktop_surface);
+		weston_desktop_surface_get_surface(cw->desktop_surface);
 
 	/* undo all maximized things here */
-	shsurf->output = get_default_output(surface->compositor);
+	cw->output = get_default_output(surface->compositor);
 
-	if (shsurf->saved_position_valid)
-		weston_view_set_position(shsurf->view,
-					 shsurf->saved_x, shsurf->saved_y);
+	if (cw->saved_position_valid)
+		weston_view_set_position(cw->view,
+					 cw->saved_x, cw->saved_y);
 	else
-		weston_view_set_initial_position(shsurf->view, shsurf->server);
-	shsurf->saved_position_valid = false;
+		weston_view_set_initial_position(cw->view, cw->server);
+	cw->saved_position_valid = false;
 }
 
-struct ShellSurface *
+CWindowWayland *
 get_shell_surface(struct weston_surface *surface)
 {
 	if (weston_surface_is_desktop_surface(surface)) {
@@ -177,11 +179,11 @@ get_shell_surface(struct weston_surface *surface)
 void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *user_data)
 {
-  struct XfwayServer *server = user_data;
+  ScreenInfoWayland *server = user_data;
 
-  struct ShellSurface *self;
+  CWindowWayland *self;
 
-  self = calloc (1, sizeof (struct ShellSurface));
+  self = calloc (1, sizeof (CWindowWayland));
 
   self->desktop_surface = desktop_surface;
   self->server = server;
@@ -215,9 +217,9 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 void surface_removed (struct weston_desktop_surface *desktop_surface,
                       void                   *user_data)
 {
-  struct XfwayServer *server = user_data;
+  ScreenInfoWayland *server = user_data;
 
-  struct ShellSurface *self = weston_desktop_surface_get_user_data (desktop_surface);
+  CWindowWayland *self = weston_desktop_surface_get_user_data (desktop_surface);
 
   if (!self)
     return;
@@ -231,33 +233,33 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
 }
 
 static void
-set_maximized_position (struct ShellSurface *shsurf)
+set_maximized_position (CWindowWayland *cw)
 {
 	pixman_rectangle32_t area;
 	struct weston_geometry geometry;
 
-  area.x = shsurf->surface->output->x;
-  area.y = shsurf->surface->output->y;
+  area.x = cw->surface->output->x;
+  area.y = cw->surface->output->y;
 
-	//get_output_work_area(shell, shsurf->output, &area);
-	geometry = weston_desktop_surface_get_geometry(shsurf->desktop_surface);
+	//get_output_work_area(shell, cw->output, &area);
+	geometry = weston_desktop_surface_get_geometry(cw->desktop_surface);
 
-	weston_view_set_position(shsurf->view,
+	weston_view_set_position(cw->view,
 				 area.x - geometry.x,
 				 area.y - geometry.y);
 }
 
 static void
-map(struct XfwayServer *shell, struct ShellSurface *shsurf,
+map(ScreenInfoWayland *shell, CWindowWayland *cw,
     int32_t sx, int32_t sy)
 {
-  if (shsurf->maximized)
-    set_maximized_position (shsurf);
+  if (cw->maximized)
+    set_maximized_position (cw);
   else
-    weston_view_set_initial_position (shsurf->view, shell);
+    weston_view_set_initial_position (cw->view, shell);
 
-	weston_view_update_transform(shsurf->view);
-  shsurf->view->is_mapped = true;
+	weston_view_update_transform(cw->view);
+  cw->view->is_mapped = true;
 
 }
 
@@ -265,57 +267,57 @@ static void
 desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 			  int32_t sx, int32_t sy, void *data)
 {
-	struct ShellSurface *shsurf =
+	CWindowWayland *cw =
 		weston_desktop_surface_get_user_data(desktop_surface);
 	struct weston_surface *surface =
 		weston_desktop_surface_get_surface(desktop_surface);
-	struct weston_view *view = shsurf->view;
-	struct XfwayServer *shell = data;
+	struct weston_view *view = cw->view;
+	ScreenInfoWayland *shell = data;
 	bool was_fullscreen;
 	bool was_maximized;
 
 	if (surface->width == 0)
 		return;
 
-  was_maximized = shsurf->maximized;
+  was_maximized = cw->maximized;
 
-  shsurf->maximized =
+  cw->maximized =
     weston_desktop_surface_get_maximized (desktop_surface);
 
 	if (!weston_surface_is_mapped(surface))
     {
-      map(shell, shsurf, sx, sy);
+      map(shell, cw, sx, sy);
       surface->is_mapped = true;
     }
 
   if (sx == 0 && sy == 0 &&
-	    shsurf->last_width == surface->width &&
-	    shsurf->last_height == surface->height &&
-	    was_maximized == shsurf->maximized)
+	    cw->last_width == surface->width &&
+	    cw->last_height == surface->height &&
+	    was_maximized == cw->maximized)
 	    return;
 
 	if (was_maximized)
-		unset_maximized(shsurf);
+		unset_maximized(cw);
 
-	if (shsurf->maximized &&
-	    !shsurf->saved_position_valid) {
-		shsurf->saved_x = shsurf->view->geometry.x;
-		shsurf->saved_y = shsurf->view->geometry.y;
-		shsurf->saved_position_valid = true;
+	if (cw->maximized &&
+	    !cw->saved_position_valid) {
+		cw->saved_x = cw->view->geometry.x;
+		cw->saved_y = cw->view->geometry.y;
+		cw->saved_position_valid = true;
 	}
 
-  if (shsurf->maximized)
-		set_maximized_position(shsurf);
+  if (cw->maximized)
+		set_maximized_position(cw);
 
-  shsurf->last_width = surface->width;
-	shsurf->last_height = surface->height;
+  cw->last_width = surface->width;
+	cw->last_height = surface->height;
 
 }
 
 static struct weston_layer_entry *
-shell_surface_calculate_layer_link (struct ShellSurface *shsurf)
+shell_surface_calculate_layer_link (CWindowWayland *cw)
 {
-	return &shsurf->server->surfaces_layer.view_list;
+	return &cw->server->surfaces_layer.view_list;
 }
 
 static void click_to_activate_binding (struct weston_pointer *pointer,
@@ -323,36 +325,36 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
                                        uint32_t               button,
                                        void                  *data)
 {
-  struct XfwayServer *server = data;
-  struct ShellSurface *shsurf;
+  ScreenInfoWayland *server = data;
+  CWindowWayland *cw;
   struct weston_seat *s;
   struct weston_surface *main_surface;
   struct weston_layer_entry *new_layer_link;
 
   main_surface = weston_surface_get_main_surface (pointer->focus->surface);
-  shsurf = get_shell_surface (main_surface);
+  cw = get_shell_surface (main_surface);
 
-  if (shsurf == NULL)
+  if (cw == NULL)
     return;
 
-  struct weston_surface *surface = weston_desktop_surface_get_surface (shsurf->desktop_surface);
+  struct weston_surface *surface = weston_desktop_surface_get_surface (cw->desktop_surface);
 
-  new_layer_link = shell_surface_calculate_layer_link (shsurf);
+  new_layer_link = shell_surface_calculate_layer_link (cw);
 
   if (new_layer_link == NULL)
     return;
-  if (new_layer_link == &shsurf->view->layer_link)
+  if (new_layer_link == &cw->view->layer_link)
     return;
 
       weston_view_activate (pointer->focus, pointer->seat,
                             WESTON_ACTIVATE_FLAG_CLICKED |
                             WESTON_ACTIVATE_FLAG_CONFIGURE);
-      weston_view_geometry_dirty (shsurf->view);
-      weston_layer_entry_remove (&shsurf->view->layer_link);
-      weston_layer_entry_insert (new_layer_link, &shsurf->view->layer_link);
-      weston_view_geometry_dirty (shsurf->view);
+      weston_view_geometry_dirty (cw->view);
+      weston_layer_entry_remove (&cw->view->layer_link);
+      weston_layer_entry_insert (new_layer_link, &cw->view->layer_link);
+      weston_view_geometry_dirty (cw->view);
       weston_surface_damage (main_surface);
-      weston_desktop_surface_propagate_layer (shsurf->desktop_surface);
+      weston_desktop_surface_propagate_layer (cw->desktop_surface);
 }
 
 static void
@@ -363,23 +365,23 @@ destroy_shell_grab_shsurf(struct wl_listener *listener, void *data)
 	grab = container_of(listener, struct ShellGrab,
 			    shsurf_destroy_listener);
 
-	grab->shsurf = NULL;
+	grab->cw = NULL;
 }
 
 static void
 shell_grab_start (struct ShellGrab                     *grab,
                         const struct weston_pointer_grab_interface *interface,
-                        struct ShellSurface                   *shsurf,
+                        CWindowWayland                   *cw,
                         struct weston_pointer                      *pointer)
 {
   weston_seat_break_desktop_grabs (pointer->seat);
 
   grab->grab.interface = interface;
-  grab->shsurf = shsurf;
+  grab->cw = cw;
   grab->shsurf_destroy_listener.notify = destroy_shell_grab_shsurf;
-  wl_signal_add (&shsurf->destroy_signal,
+  wl_signal_add (&cw->destroy_signal,
                  &grab->shsurf_destroy_listener);
-  shsurf->grabbed = 1;
+  cw->grabbed = 1;
 
   weston_pointer_start_grab (pointer, &grab->grab);
 }
@@ -410,9 +412,9 @@ noop_grab_frame(struct weston_pointer_grab *grab)
 static void
 constrain_position(struct ShellMoveGrab *move, int *cx, int *cy)
 {
-	struct ShellSurface *shsurf = move->base.shsurf;
+	CWindowWayland *cw = move->base.cw;
 	struct weston_surface *surface =
-		weston_desktop_surface_get_surface(shsurf->desktop_surface);
+		weston_desktop_surface_get_surface(cw->desktop_surface);
 	struct weston_pointer *pointer = move->base.grab.pointer;
 	int x, y, bottom;
 	const int safety = 50;
@@ -433,19 +435,19 @@ move_grab_motion(struct weston_pointer_grab *grab,
 {
 	struct ShellMoveGrab *move = (struct ShellMoveGrab *) grab;
 	struct weston_pointer *pointer = grab->pointer;
-	struct ShellSurface *shsurf = move->base.shsurf;
+	CWindowWayland *cw = move->base.cw;
 	struct weston_surface *surface;
 	int cx, cy;
 
 	weston_pointer_move(pointer, event);
-	if (!shsurf)
+	if (!cw)
 		return;
 
-	surface = weston_desktop_surface_get_surface(shsurf->desktop_surface);
+	surface = weston_desktop_surface_get_surface(cw->desktop_surface);
 
 	constrain_position(move, &cx, &cy);
 
-	weston_view_set_position(shsurf->view, cx, cy);
+	weston_view_set_position(cw->view, cx, cy);
 
 	weston_compositor_schedule_repaint(surface->compositor);
 }
@@ -453,10 +455,10 @@ move_grab_motion(struct weston_pointer_grab *grab,
 static void
 shell_grab_end(struct ShellGrab *grab)
 {
-  if (grab->shsurf)
+  if (grab->cw)
   {
 		wl_list_remove(&grab->shsurf_destroy_listener.link);
-    grab->shsurf->grabbed = 0;
+    grab->cw->grabbed = 0;
 	}
 	weston_pointer_end_grab(grab->grab.pointer);
 }
@@ -504,23 +506,23 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
                       void                          *data)
 {
   struct weston_pointer *pointer = weston_seat_get_pointer (seat);
-  struct XfwayServer *server = data;
-  struct ShellSurface *shsurf = weston_desktop_surface_get_user_data (desktop_surface);
+  ScreenInfoWayland *server = data;
+  CWindowWayland *cw = weston_desktop_surface_get_user_data (desktop_surface);
   struct ShellMoveGrab *move;
   int x, y, dx, dy;
 
-  if (!shsurf)
+  if (!cw)
     return;
 
-  if (shsurf->grabbed)
+  if (cw->grabbed)
     return;
 
   move = malloc (sizeof (*move));
 
-  move->dx = wl_fixed_from_double (shsurf->view->geometry.x) - pointer->grab_x;
-  move->dy = wl_fixed_from_double (shsurf->view->geometry.y) - pointer->grab_y;
+  move->dx = wl_fixed_from_double (cw->view->geometry.x) - pointer->grab_x;
+  move->dy = wl_fixed_from_double (cw->view->geometry.y) - pointer->grab_y;
 
-  shell_grab_start (&move->base, &move_grab_interface, shsurf,
+  shell_grab_start (&move->base, &move_grab_interface, cw,
                           pointer);
 }
 
@@ -537,7 +539,7 @@ resize_grab_motion(struct weston_pointer_grab *grab,
 {
 	struct ShellResizeGrab *resize = (struct ShellResizeGrab *) grab;
 	struct weston_pointer *pointer = grab->pointer;
-	struct ShellSurface *shsurf = resize->base.shsurf;
+	CWindowWayland *shsurf = resize->base.cw;
 	int32_t width, height;
 	struct weston_size min_size, max_size;
 	wl_fixed_t from_x, from_y;
@@ -594,7 +596,7 @@ resize_grab_button(struct weston_pointer_grab *grab,
 	struct weston_pointer *pointer = grab->pointer;
 	enum wl_pointer_button_state state = state_w;
 	struct weston_desktop_surface *desktop_surface =
-		resize->base.shsurf->desktop_surface;
+		resize->base.cw->desktop_surface;
 
 	if (pointer->button_count == 0 &&
 	    state == WL_POINTER_BUTTON_STATE_RELEASED) {
@@ -609,7 +611,7 @@ resize_grab_cancel(struct weston_pointer_grab *grab)
 {
 	struct ShellResizeGrab *resize = (struct ShellResizeGrab *) grab;
 	struct weston_desktop_surface *desktop_surface =
-		resize->base.shsurf->desktop_surface;
+		resize->base.cw->desktop_surface;
 
 	weston_desktop_surface_set_resizing(desktop_surface, false);
 	shell_grab_end(&resize->base);
@@ -636,7 +638,7 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
                         void                             *server)
 {
   struct weston_pointer *pointer = weston_seat_get_pointer(seat);
-	struct ShellSurface *shsurf =
+	CWindowWayland *shsurf =
 		weston_desktop_surface_get_user_data(desktop_surface);
 	struct weston_surface *surface =
 		weston_desktop_surface_get_surface(shsurf->desktop_surface);
@@ -687,7 +689,7 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
 }
 
 static void
-set_maximized (struct ShellSurface *shsurf,
+set_maximized (CWindowWayland *shsurf,
                bool                 maximized)
 {
   struct weston_surface *surface =
@@ -711,7 +713,7 @@ desktop_surface_maximized_requested (struct weston_desktop_surface *desktop_surf
                                      bool                           maximized,
                                      void                          *server)
 {
-  struct ShellSurface *shsurf =
+  CWindowWayland *shsurf =
           weston_desktop_surface_get_user_data (desktop_surface);
 
   set_maximized (shsurf, maximized);
@@ -731,7 +733,7 @@ static const struct weston_desktop_api desktop_api =
 
 };
 
-void xfway_server_shell_init (struct XfwayServer *server)
+void xfway_server_shell_init (ScreenInfoWayland *server)
 {
   struct weston_desktop *desktop;
 
