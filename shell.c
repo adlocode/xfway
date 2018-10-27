@@ -50,11 +50,16 @@ struct ShellSurface
   struct weston_desktop_surface *desktop_surface;
   struct weston_surface *surface;
   struct weston_view *view;
+  int32_t last_width, last_height;
+  int32_t saved_x, saved_y;
+  bool saved_position_valid;
   int grabbed;
 
   uint32_t resize_edges;
 
   struct XfwayServer *server;
+
+  struct weston_output *output;
 
   bool maximized;
 };
@@ -71,6 +76,92 @@ struct ShellMoveGrab
   struct ShellGrab base;
   wl_fixed_t dx, dy;
 };
+
+static void
+weston_view_set_initial_position(struct weston_view *view,
+				 struct XfwayServer *shell)
+{
+	struct weston_compositor *compositor = shell->compositor;
+	int ix = 0, iy = 0;
+	int32_t range_x, range_y;
+	int32_t x, y;
+	struct weston_output *output, *target_output = NULL;
+	struct weston_seat *seat;
+	pixman_rectangle32_t area;
+
+	/* As a heuristic place the new window on the same output as the
+	 * pointer. Falling back to the output containing 0, 0.
+	 *
+	 * TODO: Do something clever for touch too?
+	 */
+	wl_list_for_each(seat, &compositor->seat_list, link) {
+		struct weston_pointer *pointer = weston_seat_get_pointer(seat);
+
+		if (pointer) {
+			ix = wl_fixed_to_int(pointer->x);
+			iy = wl_fixed_to_int(pointer->y);
+			break;
+		}
+	}
+
+	wl_list_for_each(output, &compositor->output_list, link) {
+		if (pixman_region32_contains_point(&output->region, ix, iy, NULL)) {
+			target_output = output;
+			break;
+		}
+	}
+
+	if (!target_output) {
+		weston_view_set_position(view, 10 + random() % 400,
+					 10 + random() % 400);
+		return;
+	}
+
+	/* Valid range within output where the surface will still be onscreen.
+	 * If this is negative it means that the surface is bigger than
+	 * output.
+	 */
+
+	x = target_output->x;
+	y = target_output->y;
+	range_x = target_output->width - view->surface->width;
+	range_y = target_output->height - view->surface->height;
+
+	if (range_x > 0)
+		x += random() % range_x;
+
+	if (range_y > 0)
+		y += random() % range_y;
+
+	weston_view_set_position(view, x, y);
+}
+
+struct weston_output *
+get_default_output(struct weston_compositor *compositor)
+{
+	if (wl_list_empty(&compositor->output_list))
+		return NULL;
+
+	return container_of(compositor->output_list.next,
+			    struct weston_output, link);
+}
+
+static void
+unset_maximized(struct ShellSurface *shsurf)
+{
+	struct weston_surface *surface =
+		weston_desktop_surface_get_surface(shsurf->desktop_surface);
+
+	/* undo all maximized things here */
+	shsurf->output = get_default_output(surface->compositor);
+
+	if (shsurf->saved_position_valid)
+		weston_view_set_position(shsurf->view,
+					 shsurf->saved_x, shsurf->saved_y);
+	else
+		weston_view_set_initial_position(shsurf->view, shsurf->server);
+	shsurf->saved_position_valid = false;
+}
 
 struct ShellSurface *
 get_shell_surface(struct weston_surface *surface)
@@ -94,6 +185,8 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 
   self->desktop_surface = desktop_surface;
   self->server = server;
+
+  self->saved_position_valid = false;
 
   weston_desktop_surface_set_user_data (self->desktop_surface, self);
 
@@ -160,7 +253,11 @@ map(struct XfwayServer *shell, struct ShellSurface *shsurf,
 {
   if (shsurf->maximized)
     set_maximized_position (shsurf);
+  else
+    weston_view_set_initial_position (shsurf->view, shell);
+
 	weston_view_update_transform(shsurf->view);
+  shsurf->view->is_mapped = true;
 
 }
 
@@ -180,11 +277,38 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 	if (surface->width == 0)
 		return;
 
+  was_maximized = shsurf->maximized;
+
   shsurf->maximized =
     weston_desktop_surface_get_maximized (desktop_surface);
 
 	if (!weston_surface_is_mapped(surface))
-		map(shell, shsurf, sx, sy);
+    {
+      map(shell, shsurf, sx, sy);
+      surface->is_mapped = true;
+    }
+
+  if (sx == 0 && sy == 0 &&
+	    shsurf->last_width == surface->width &&
+	    shsurf->last_height == surface->height &&
+	    was_maximized == shsurf->maximized)
+	    return;
+
+	if (was_maximized)
+		unset_maximized(shsurf);
+
+	if (shsurf->maximized &&
+	    !shsurf->saved_position_valid) {
+		shsurf->saved_x = shsurf->view->geometry.x;
+		shsurf->saved_y = shsurf->view->geometry.y;
+		shsurf->saved_position_valid = true;
+	}
+
+  if (shsurf->maximized)
+		set_maximized_position(shsurf);
+
+  shsurf->last_width = surface->width;
+	shsurf->last_height = surface->height;
 
 }
 
