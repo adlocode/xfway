@@ -1,0 +1,5 @@
+pkgdatadir=/home/adlo/xfway
+
+Name: Wayland Protocols
+Description: Wayland protocol files (not installed)
+Version: 1.0.0

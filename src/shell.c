@@ -57,7 +57,7 @@ struct _CWindowWayland
 
   uint32_t resize_edges;
 
-  ScreenInfoWayland *server;
+  DisplayInfo *server;
 
   struct weston_output *output;
 
@@ -81,7 +81,7 @@ struct ShellMoveGrab
 
 static void
 weston_view_set_initial_position(struct weston_view *view,
-				 ScreenInfoWayland *shell)
+				 DisplayInfo *shell)
 {
 	struct weston_compositor *compositor = shell->compositor;
 	int ix = 0, iy = 0;
@@ -179,7 +179,7 @@ get_shell_surface(struct weston_surface *surface)
 void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *user_data)
 {
-  ScreenInfoWayland *server = user_data;
+  DisplayInfo *server = user_data;
 
   CWindowWayland *self;
 
@@ -217,7 +217,7 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 void surface_removed (struct weston_desktop_surface *desktop_surface,
                       void                   *user_data)
 {
-  ScreenInfoWayland *server = user_data;
+  DisplayInfo *server = user_data;
 
   CWindowWayland *self = weston_desktop_surface_get_user_data (desktop_surface);
 
@@ -250,7 +250,7 @@ set_maximized_position (CWindowWayland *cw)
 }
 
 static void
-map(ScreenInfoWayland *shell, CWindowWayland *cw,
+map(DisplayInfo *shell, CWindowWayland *cw,
     int32_t sx, int32_t sy)
 {
   if (cw->maximized)
@@ -272,7 +272,7 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 	struct weston_surface *surface =
 		weston_desktop_surface_get_surface(desktop_surface);
 	struct weston_view *view = cw->view;
-	ScreenInfoWayland *shell = data;
+	DisplayInfo *shell = data;
 	bool was_fullscreen;
 	bool was_maximized;
 
@@ -325,7 +325,7 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
                                        uint32_t               button,
                                        void                  *data)
 {
-  ScreenInfoWayland *server = data;
+  DisplayInfo *server = data;
   CWindowWayland *cw;
   struct weston_seat *s;
   struct weston_surface *main_surface;
@@ -506,7 +506,7 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
                       void                          *data)
 {
   struct weston_pointer *pointer = weston_seat_get_pointer (seat);
-  ScreenInfoWayland *server = data;
+  DisplayInfo *server = data;
   CWindowWayland *cw = weston_desktop_surface_get_user_data (desktop_surface);
   struct ShellMoveGrab *move;
   int x, y, dx, dy;
@@ -733,7 +733,7 @@ static const struct weston_desktop_api desktop_api =
 
 };
 
-void xfway_server_shell_init (ScreenInfoWayland *server)
+void xfway_server_shell_init (DisplayInfo *server)
 {
   struct weston_desktop *desktop;
 

@@ -26,11 +26,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <linux/input.h>
+#include <gdk/gdk.h>
+#include <gtk/gtk.h>
 
-struct _ScreenInfoWayland
+struct _DisplayInfo
 {
   struct weston_compositor *compositor;
-  struct wl_listener new_output;
+  struct wl_listener heads_changed_listener;
   union
     {
       const struct weston_drm_output_api *drm;
@@ -40,6 +42,10 @@ struct _ScreenInfoWayland
   struct weston_surface *background;
   struct weston_view *background_view;
   struct weston_layer surfaces_layer;
+
+  int (*simple_output_configure)(struct weston_output *output);
+
+  GdkDisplay *gdisplay;
 };
 
-typedef struct _ScreenInfoWayland ScreenInfoWayland;
+typedef struct _DisplayInfo DisplayInfo;

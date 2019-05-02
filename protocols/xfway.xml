@@ -1,0 +1,19 @@
+<protocol name="xfway">
+
+  <interface name="xfway_compositor" version="1">
+    <description summary="create desktop widgets and helpers">
+      Traditional user interfaces can rely on this interface to define the
+      foundations of typical desktops. Currently it's possible to set up
+      background, panels and locking surfaces.
+    </description>
+
+    <event name="server">
+      <description summary="tell client what cursor to show during a grab">
+	This event will be sent immediately before a fake enter event on the
+	grab surface.
+      </description>
+      <arg name="cursor" type="uint"/>
+    </event>
+
+  </interface>
+</protocol>

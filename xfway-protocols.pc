@@ -1,0 +1,7 @@
+prefix=/home/adlo/local
+datarootdir=${prefix}/share
+pkgdatadir=${pc_sysrootdir}${datarootdir}/xfwm4
+
+Name: Wayland Protocols
+Description: Wayland protocol files
+Version: 1.0.0
