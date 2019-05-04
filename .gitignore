@@ -1,3 +1,5 @@
 build/
 protocol/*.h
 protocol/*.c
+Makefile
+Makefile.in
