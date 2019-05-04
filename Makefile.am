@@ -66,4 +66,4 @@ $(shell echo $1 | $(SED) 's/\([a-z\-]\+\)-[a-z]\+-v[0-9]\+/\1/')
 endef
 
 protocol/xfway-shell-client-protocol.h : $(top_srcdir)/protocol/xfway-shell.xml
-	$(wayland_scanner) client-header $(top_srcdir)/protocol/xfway-shell.xml $(top_srcdir)/protocol/xfway-shell-client-protocol.h
+	$(AM_V_GEN) $(wayland_scanner) client-header $(top_srcdir)/protocol/xfway-shell.xml $(top_srcdir)/protocol/xfway-shell-client-protocol.h
