@@ -29,7 +29,6 @@
 #include <pthread.h>
 #include "server.h"
 #include "shell.h"
-#include <protocols/xfway-protocol.h>
 
 
 
@@ -45,7 +44,7 @@ static int vlog_continue (const char *fmt,
   return vfprintf (stderr, fmt, argp);
 }
 
-static void new_output_notify_drm (struct weston_output *output)
+static int new_output_notify_drm (struct weston_output *output)
 {
   DisplayInfo *server = weston_compositor_get_user_data (output->compositor);
 
@@ -62,6 +61,8 @@ static void new_output_notify_drm (struct weston_output *output)
   weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
   server->background_view = weston_view_create (server->background);
   weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
+
+  return 0;
 }
 
 static void
@@ -154,7 +155,7 @@ compositor_set_simple_head_configurator(struct weston_compositor *compositor,
 						&wet->heads_changed_listener);
 }
 
-static void new_output_notify_wayland (struct weston_output *output)
+static int new_output_notify_wayland (struct weston_output *output)
 {
   //struct weston_output *output = data;
   DisplayInfo *server = weston_compositor_get_user_data (output->compositor);
@@ -170,6 +171,8 @@ static void new_output_notify_wayland (struct weston_output *output)
   weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
   server->background_view = weston_view_create (server->background);
   weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
+
+  return 0;
 
 }
 
@@ -232,9 +235,9 @@ int main (int    argc,
 
   server = malloc (sizeof(DisplayInfo));
 
-    //pid_t id = fork ();
+   /* pid_t id = fork ();
 
-  /*if (id > 0)
+  if (id > 0)
   {
     gtk_init (&argc, &argv);
     server->gdisplay = gdk_display_get_default ();
@@ -243,10 +246,10 @@ int main (int    argc,
     gtk_widget_show_all (window);
     g_signal_connect (window, "destroy", gtk_main_quit, NULL);
     gtk_main ();
-  }
+  }*/
 
-  else
-  {*/
+  //else
+  //{
 
 	display = wl_display_create ();
 	server->compositor = weston_compositor_create (display, NULL);

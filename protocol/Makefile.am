@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
 unstable_protocols =								\
-xfway.xml							\
+xfway-shell.xml							\
 	$(NULL)
 
 stable_protocols =								\

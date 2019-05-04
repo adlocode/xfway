@@ -10,7 +10,7 @@ EXTRA_DIST =								\
 	COMPOSITOR
 
 EXTRA_DIST +=								\
-	protocol/xfway.xml
+	protocol/xfway-shell.xml
 
 DISTCLEANFILES =							\
 	intltool-extract						\
@@ -18,8 +18,11 @@ DISTCLEANFILES =							\
 	intltool-update
 
 SUBDIRS = 								\
-	protocols				\
+	protocol				\
 	src 							
+
+BUILT_SOURCES =								\
+	protocol/xfway-shell-client-protocol.h
 
 distclean-local:
 	rm -rf *.cache
@@ -51,3 +54,16 @@ ChangeLog: Makefile
 	|| (touch ChangeLog; echo 'Git directory not found: installing possibly empty changelog.' >&2)
 
 dist-hook: ChangeLog
+
+.SECONDEXPANSION:
+
+define protostability
+$(if $(findstring unstable,$1),unstable,stable)
+endef
+
+define protoname
+$(shell echo $1 | $(SED) 's/\([a-z\-]\+\)-[a-z]\+-v[0-9]\+/\1/')
+endef
+
+protocol/xfway-shell-client-protocol.h : $(top_srcdir)/protocol/xfway-shell.xml
+	$(wayland_scanner) client-header $(top_srcdir)/protocol/xfway-shell.xml $(top_srcdir)/protocol/xfway-shell-client-protocol.h

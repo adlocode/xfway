@@ -31,13 +31,17 @@ AC_COPYRIGHT([Copyright (c) 2002-2015
         The Xfce development team. All rights reserved.
 
 Written for Xfce by Olivier Fourdan <fourdan@xfce.org>.])
-AC_INIT([xfwm4], [xfwm4_version], [xfce4-dev@xfce.org])
+AC_INIT([xfway], [xfwm4_version], [xfce4-dev@xfce.org])
 AM_INIT_AUTOMAKE([1.8 dist-bzip2 tar-ustar no-dist-gzip])
 
 AC_CONFIG_MACRO_DIRS([m4])
 AC_CONFIG_HEADERS([config.h])
 
 AC_SUBST([XFWAY_PROTOCOLS_VERSION], [xfway_protocols_version])
+
+PKG_CHECK_MODULES(WAYLAND_PROTOCOLS, [wayland-protocols >= 1.13],
+		  [ac_wayland_protocols_pkgdatadir=`$PKG_CONFIG --variable=pkgdatadir wayland-protocols`])
+AC_SUBST(WAYLAND_PROTOCOLS_DATADIR, $ac_wayland_protocols_pkgdatadir)
 
 AC_ARG_VAR([wayland_scanner], [The wayland-scanner executable])
 AC_PATH_PROG([wayland_scanner], [wayland-scanner])
@@ -116,8 +120,8 @@ AC_CHECK_LIB([Xi], [XISelectEvents],
   ], [], [$LIBX11_CFLAGS $LIBX11_LDFLAGS $LIBX11_LIBS])
 
 XDT_CHECK_PACKAGE([WAYLAND_SERVER], [wayland-server], [1.0.0])
-XDT_CHECK_PACKAGE([LIBWESTON], [libweston-5], [5.0.0])
-XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-5], [5.0.0])
+XDT_CHECK_PACKAGE([LIBWESTON], [libweston-6], [6.0.0])
+XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-6], [6.0.0])
 XDT_CHECK_PACKAGE([LIBINPUT], [libinput], [1.10.0])
 XDT_CHECK_PACKAGE([PIXMAN], [pixman-1], [0.34.0])
 XDT_CHECK_PACKAGE([XKBCOMMON], [xkbcommon], [0.8.0])
@@ -320,11 +324,11 @@ AC_CONFIG_FILES([
 AC_OUTPUT([
 Makefile
 src/Makefile
-protocols/Makefile
+protocol/Makefile
 po/Makefile.in
 ])
 
-XDT_CHECK_PACKAGE([XFWAY_PROTOCOLS], [xfway-protocols], [0.0.0])
+dnl XDT_CHECK_PACKAGE([XFWAY_PROTOCOLS], [xfway-protocols], [0.0.0])
 
 echo
 echo "Build Configuration for $PACKAGE version $VERSION revision $REVISION:"
