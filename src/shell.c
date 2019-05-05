@@ -15,7 +15,7 @@
  */
 
 #include "server.h"
-//#include <protocol/xfway-client-protocol.h>
+#include <protocol/xfway-shell-server-protocol.h>
 
 /**
  * Returns the smaller of two values.
@@ -734,10 +734,10 @@ static const struct weston_desktop_api desktop_api =
 
 };
 
-/*static const struct xfway_compositor_interface xfway_desktop_shell_implementation =
+static const struct xfway_shell_interface xfway_desktop_shell_implementation =
 {
-
-};*/
+  NULL
+};
 
 void xfway_server_shell_init (DisplayInfo *server)
 {
@@ -745,9 +745,9 @@ void xfway_server_shell_init (DisplayInfo *server)
 
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
 
-  /*wl_global_create (server->compositor->wl_display,
-                    &xfway_compositor_interface, 1,
-                    server, bind_desktop_shell);*/
+  wl_global_create (server->compositor->wl_display,
+                    &xfway_shell_interface, 1,
+                    server, NULL);
 
   weston_layer_init (&server->surfaces_layer, server->compositor);
   weston_layer_set_position (&server->surfaces_layer, WESTON_LAYER_POSITION_NORMAL);

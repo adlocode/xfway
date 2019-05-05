@@ -22,7 +22,10 @@ SUBDIRS = 								\
 	src 							
 
 BUILT_SOURCES =								\
-	protocol/xfway-shell-client-protocol.h
+	protocol/xfway-shell-client-protocol.c				\
+	protocol/xfway-shell-client-protocol.h				\
+	protocol/xfway-shell-server-protocol.h
+
 
 distclean-local:
 	rm -rf *.cache
@@ -67,3 +70,9 @@ endef
 
 protocol/xfway-shell-client-protocol.h : $(top_srcdir)/protocol/xfway-shell.xml
 	$(AM_V_GEN) $(wayland_scanner) client-header $(top_srcdir)/protocol/xfway-shell.xml $(top_srcdir)/protocol/xfway-shell-client-protocol.h
+
+protocol/xfway-shell-client-protocol.c : $(top_srcdir)/protocol/xfway-shell.xml
+	$(AM_V_GEN) $(wayland_scanner) private-code $(top_srcdir)/protocol/xfway-shell.xml $(top_srcdir)/protocol/xfway-shell-client-protocol.c
+
+protocol/xfway-shell-server-protocol.h : $(top_srcdir)/protocol/xfway-shell.xml
+	$(AM_V_GEN) $(wayland_scanner) server-header $(top_srcdir)/protocol/xfway-shell.xml $(top_srcdir)/protocol/xfway-shell-server-protocol.h
