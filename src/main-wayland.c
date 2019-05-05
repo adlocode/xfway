@@ -176,13 +176,14 @@ static int new_output_notify_wayland (struct weston_output *output)
 
 }
 
-static int load_drm_backend (DisplayInfo *server)
+static int load_drm_backend (DisplayInfo *server, int32_t use_pixman)
 {
   struct weston_drm_backend_config config = {{ 0, }};
   int ret = 0;
 
   config.base.struct_version = WESTON_DRM_BACKEND_CONFIG_VERSION;
 	config.base.struct_size = sizeof (struct weston_drm_backend_config);
+  config.use_pixman = use_pixman;
 
   ret = weston_compositor_load_backend (server->compositor, WESTON_BACKEND_DRM, &config.base);
 
@@ -195,7 +196,7 @@ static int load_drm_backend (DisplayInfo *server)
   return ret;
 }
 
-static int load_wayland_backend (DisplayInfo *server)
+static int load_wayland_backend (DisplayInfo *server, int32_t use_pixman)
 {
 
   struct weston_wayland_backend_config config = {{ 0, }};
@@ -206,7 +207,7 @@ static int load_wayland_backend (DisplayInfo *server)
 
 	config.cursor_size = 32;
 	config.display_name = 0;
-	config.use_pixman = 0;
+	config.use_pixman = use_pixman;
 	config.sprawl = 0;
 	config.fullscreen = 0;
 	config.cursor_theme = NULL;
@@ -260,6 +261,15 @@ int main (int    argc,
 
   weston_log_set_handler (vlog, vlog_continue);
 
+  int i;
+  int32_t use_pixman = 0;
+
+  for (i = 1; i < argc; i++)
+      {
+        if (strcmp (argv[i], "--use-pixman") == 0)
+          use_pixman = 1;
+      }
+
 	server->compositor->default_pointer_grab = NULL;
 	server->compositor->vt_switching = true;
 
@@ -278,12 +288,12 @@ int main (int    argc,
   switch (backend)
     {
     case WESTON_BACKEND_DRM:
-      ret = load_drm_backend (server);
+      ret = load_drm_backend (server, use_pixman);
       if (ret != 0)
         return ret;
       break;
     case WESTON_BACKEND_WAYLAND:
-    ret = load_wayland_backend (server);
+    ret = load_wayland_backend (server, use_pixman);
       if (ret != 0)
         return ret;
       break;
