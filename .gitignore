@@ -3,3 +3,5 @@ protocol/*.h
 protocol/*.c
 Makefile
 Makefile.in
+xfway
+*.o
