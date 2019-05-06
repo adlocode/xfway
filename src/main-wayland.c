@@ -30,7 +30,12 @@
 #include "server.h"
 #include "shell.h"
 
-
+typedef struct
+{
+  struct weston_output *output;
+  struct weston_surface *background;
+  struct wl_list link;
+} Output;
 
 static int vlog (const char *fmt,
                  va_list     ap)
@@ -54,13 +59,14 @@ static int new_output_notify_drm (struct weston_output *output)
   weston_output_set_scale (output, 1);
   weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
 
-  weston_layer_init (&server->background_layer, server->compositor);
-  weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
-  server->background = weston_surface_create (server->compositor);
-  weston_surface_set_size (server->background, output->width, output->height);
-  weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
-  server->background_view = weston_view_create (server->background);
-  weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
+  Output *c_output;
+  c_output = malloc (sizeof(Output));
+  c_output->output = NULL;
+  c_output->background = NULL;
+
+  c_output->output = output;
+
+  wl_list_insert (&server->outputs, &c_output->link);
 
   return 0;
 }
@@ -164,13 +170,14 @@ static int new_output_notify_wayland (struct weston_output *output)
   weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
   server->api.windowed->output_set_size (output, 800, 600);
 
-  weston_layer_init (&server->background_layer, server->compositor);
-  weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
-  server->background = weston_surface_create (server->compositor);
-  weston_surface_set_size (server->background, output->width, output->height);
-  weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
-  server->background_view = weston_view_create (server->background);
-  weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
+  Output *c_output;
+  c_output = malloc (sizeof(Output));
+  c_output->output = NULL;
+  c_output->background = NULL;
+
+  c_output->output = output;
+
+  wl_list_insert (&server->outputs, &c_output->link);
 
   return 0;
 
@@ -224,6 +231,20 @@ static int load_wayland_backend (DisplayInfo *server, int32_t use_pixman)
   return ret;
 }
 
+void background_create (DisplayInfo *server, Output *o)
+{
+  if (server->background == NULL)
+    {
+      weston_layer_init (&server->background_layer, server->compositor);
+      weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
+      server->background = weston_surface_create (server->compositor);
+      weston_surface_set_size (server->background, o->output->width, o->output->height);
+      weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
+      server->background_view = weston_view_create (server->background);
+      weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
+    }
+}
+
 int main (int    argc,
           char **argv)
 {
@@ -235,6 +256,9 @@ int main (int    argc,
   struct weston_output *output;
 
   server = malloc (sizeof(DisplayInfo));
+
+  server->background = NULL;
+
 
    /* pid_t id = fork ();
 
@@ -281,6 +305,8 @@ int main (int    argc,
 
   server->compositor->user_data = server;
 
+  wl_list_init (&server->outputs);
+
   enum weston_compositor_backend backend = WESTON_BACKEND_DRM;
   if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET"))
 		backend = WESTON_BACKEND_WAYLAND;
@@ -302,6 +328,13 @@ int main (int    argc,
     }
 
   weston_compositor_flush_heads_changed (server->compositor);
+
+  Output *o;
+
+  wl_list_for_each (o, &server->outputs, link)
+      {
+        background_create (server, o);
+      }
 
   xfway_server_shell_init (server);
 

@@ -16,6 +16,7 @@
 
 #define _GNU_SOURCE
 #include <wayland-server.h>
+#include <wayland-util.h>
 #include <compositor.h>
 #include <compositor-drm.h>
 #include <compositor-wayland.h>
@@ -42,6 +43,8 @@ struct _DisplayInfo
   struct weston_surface *background;
   struct weston_view *background_view;
   struct weston_layer surfaces_layer;
+
+  struct wl_list outputs;
 
   int (*simple_output_configure)(struct weston_output *output);
 
