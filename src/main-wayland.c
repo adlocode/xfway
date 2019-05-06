@@ -239,7 +239,7 @@ void background_create (DisplayInfo *server, Output *o)
       weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND - 1);
       server->background = weston_surface_create (server->compositor);
       weston_surface_set_size (server->background, o->output->width, o->output->height);
-      weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
+      weston_surface_set_color (server->background, 0, 0, 0, 1);
       server->background_view = weston_view_create (server->background);
       weston_layer_entry_insert (&server->background_layer.view_list, &server->background_view->layer_link);
     }
