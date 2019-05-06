@@ -236,7 +236,7 @@ void background_create (DisplayInfo *server, Output *o)
   if (server->background == NULL)
     {
       weston_layer_init (&server->background_layer, server->compositor);
-      weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
+      weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND - 1);
       server->background = weston_surface_create (server->compositor);
       weston_surface_set_size (server->background, o->output->width, o->output->height);
       weston_surface_set_color (server->background, 0, 0.25, 0.5, 1);
