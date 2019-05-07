@@ -739,6 +739,28 @@ static const struct xfway_shell_interface xfway_desktop_shell_implementation =
   NULL
 };
 
+static void
+bind_desktop_shell(struct wl_client *client,
+		   void *data, uint32_t version, uint32_t id)
+{
+	struct DisplayInfo *shell = data;
+	struct wl_resource *resource;
+
+	resource = wl_resource_create(client, &xfway_shell_interface,
+				      1, id);
+
+	/*if (client == shell->child.client) {
+		wl_resource_set_implementation(resource,
+					       &desktop_shell_implementation,
+					       shell, unbind_desktop_shell);
+		shell->child.desktop_shell = resource;
+		return;
+	}*/
+
+	wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
+			       "permission to bind desktop_shell denied");
+}
+
 void xfway_server_shell_init (DisplayInfo *server)
 {
   struct weston_desktop *desktop;
@@ -747,7 +769,7 @@ void xfway_server_shell_init (DisplayInfo *server)
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,
-                    server, NULL);
+                    server, bind_desktop_shell);
 
   weston_layer_init (&server->surfaces_layer, server->compositor);
   weston_layer_set_position (&server->surfaces_layer, WESTON_LAYER_POSITION_NORMAL);
