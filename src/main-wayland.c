@@ -30,6 +30,18 @@
 #include "server.h"
 #include "shell.h"
 
+#ifndef container_of
+#define container_of(ptr, type, member) ({				\
+	const __typeof__( ((type *)0)->member ) *__mptr = (ptr);	\
+	(type *)( (char *)__mptr - offsetof(type,member) );})
+#endif
+
+struct _XfwayHeadTracker {
+	struct wl_listener head_destroy_listener;
+};
+
+typedef struct _XfwayHeadTracker XfwayHeadTracker;
+
 typedef struct
 {
   struct weston_output *output;
@@ -71,6 +83,77 @@ static int new_output_notify_drm (struct weston_output *output)
   return 0;
 }
 
+static int
+count_remaining_heads(struct weston_output *output, struct weston_head *to_go)
+{
+	struct weston_head *iter = NULL;
+	int n = 0;
+
+	while ((iter = weston_output_iterate_heads(output, iter))) {
+		if (iter != to_go)
+			n++;
+	}
+
+	return n;
+}
+
+static void
+xfway_head_tracker_destroy(XfwayHeadTracker *track)
+{
+	wl_list_remove(&track->head_destroy_listener.link);
+	free(track);
+}
+
+static void
+handle_head_destroy(struct wl_listener *listener, void *data)
+{
+	struct weston_head *head = data;
+	struct weston_output *output;
+	XfwayHeadTracker *track =
+		container_of(listener, XfwayHeadTracker,
+			     head_destroy_listener);
+
+	xfway_head_tracker_destroy(track);
+
+	output = weston_head_get_output(head);
+
+	/* On shutdown path, the output might be already gone. */
+	if (!output)
+		return;
+
+	if (count_remaining_heads(output, head) > 0)
+		return;
+
+	weston_output_destroy(output);
+}
+
+static XfwayHeadTracker *
+xfway_head_tracker_from_head(struct weston_head *head)
+{
+	struct wl_listener *lis;
+
+	lis = weston_head_get_destroy_listener(head, handle_head_destroy);
+	if (!lis)
+		return NULL;
+
+	return container_of(lis, XfwayHeadTracker,
+			    head_destroy_listener);
+}
+
+static void
+xfway_head_tracker_create(DisplayInfo *display_info,
+			struct weston_head *head)
+{
+	XfwayHeadTracker *track;
+
+	track = zalloc(sizeof *track);
+	if (!track)
+		return;
+
+	track->head_destroy_listener.notify = handle_head_destroy;
+	weston_head_add_destroy_listener(head, &track->head_destroy_listener);
+}
+
 static void
 simple_head_enable(DisplayInfo *wet, struct weston_head *head)
 {
@@ -103,17 +186,19 @@ simple_head_enable(DisplayInfo *wet, struct weston_head *head)
 
 		return;
 	}
+
+  xfway_head_tracker_create (wet, head);
 }
 
 static void
 simple_head_disable(struct weston_head *head)
 {
 	struct weston_output *output;
-	/*struct wet_head_tracker *track;
+	XfwayHeadTracker *track;
 
-	track = wet_head_tracker_from_head(head);
+	track = xfway_head_tracker_from_head(head);
 	if (track)
-		wet_head_tracker_destroy(track);*/
+		xfway_head_tracker_destroy(track);
 
 	output = weston_head_get_output(head);
 	//assert(output);
