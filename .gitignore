@@ -5,3 +5,4 @@ Makefile
 Makefile.in
 xfway
 *.o
+/autom4te.cache
