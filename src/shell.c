@@ -16,6 +16,7 @@
 
 #include "server.h"
 #include <protocol/xfway-shell-server-protocol.h>
+#include <protocol/window-switcher-unstable-v1-server-protocol.h>
 
 /**
  * Returns the smaller of two values.
@@ -79,6 +80,9 @@ struct ShellMoveGrab
   struct ShellGrab base;
   wl_fixed_t dx, dy;
 };
+
+WL_EXPORT int
+weston_window_switcher_module_init (struct weston_compositor *compositor);
 
 static void
 weston_view_set_initial_position(struct weston_view *view,
@@ -764,8 +768,11 @@ bind_desktop_shell(struct wl_client *client,
 void xfway_server_shell_init (DisplayInfo *server)
 {
   struct weston_desktop *desktop;
+  int ret;
 
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
+
+  ret = weston_window_switcher_module_init (server->compositor);
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,

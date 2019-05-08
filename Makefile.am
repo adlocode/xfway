@@ -24,7 +24,10 @@ SUBDIRS = 								\
 BUILT_SOURCES =								\
 	protocol/xfway-shell-client-protocol.c				\
 	protocol/xfway-shell-client-protocol.h				\
-	protocol/xfway-shell-server-protocol.h
+	protocol/xfway-shell-server-protocol.h				\
+	protocol/window-switcher-unstable-v1-server-protocol.h		\
+	protocol/window-switcher-unstable-v1-client-protocol.h		\
+	protocol/window-switcher-unstable-v1-server-protocol.c
 
 
 distclean-local:
@@ -76,3 +79,12 @@ protocol/xfway-shell-client-protocol.c : $(top_srcdir)/protocol/xfway-shell.xml
 
 protocol/xfway-shell-server-protocol.h : $(top_srcdir)/protocol/xfway-shell.xml
 	$(AM_V_GEN) $(wayland_scanner) server-header $(top_srcdir)/protocol/xfway-shell.xml $(top_srcdir)/protocol/xfway-shell-server-protocol.h
+
+protocol/window-switcher-unstable-v1-server-protocol.h : $(top_srcdir)/protocol/window-switcher-unstable-v1.xml
+	$(AM_V_GEN) $(wayland_scanner) server-header $(top_srcdir)/protocol/window-switcher-unstable-v1.xml $(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.h
+
+protocol/window-switcher-unstable-v1-client-protocol.h : $(top_srcdir)/protocol/window-switcher-unstable-v1.xml
+	$(AM_V_GEN) $(wayland_scanner) client-header $(top_srcdir)/protocol/window-switcher-unstable-v1.xml $(top_srcdir)/protocol/window-switcher-unstable-v1-client-protocol.h
+
+protocol/window-switcher-unstable-v1-server-protocol.c : $(top_srcdir)/protocol/window-switcher-unstable-v1.xml
+	$(AM_V_GEN) $(wayland_scanner) private-code $(top_srcdir)/protocol/window-switcher-unstable-v1.xml $(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.c

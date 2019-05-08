@@ -4,6 +4,9 @@ xfway_SOURCES = \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.c \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.h \
 $(top_srcdir)/protocol/xfway-shell-server-protocol.h \
+$(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.c \
+$(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.h \
+window-switcher.c \
 shell.c \
 shell.h \
 server.h \
