@@ -27,10 +27,56 @@ struct weston_window_switcher
   struct wl_list windows;
 };
 
+struct weston_window_switcher_window
+{
+  struct wl_list link;
+  struct weston_window_switcher *switcher;
+  struct wl_resource *resource;
+  struct weston_desktop_surface *surface;
+  struct weston_view *view;
+  struct wl_listener surface_destroy_listener;
+  struct wl_listener view_destroy_listener;
+};
+
 static const struct zww_window_switcher_v1_interface weston_window_switcher_implementation =
 {
   .destroy = NULL
 };
+
+static void
+_weston_window_switcher_window_create (struct weston_window_switcher *switcher,
+                                       struct weston_surface         *surface)
+{
+  struct weston_window_switcher_window *self;
+  struct weston_desktop_surface *dsurface = weston_surface_get_desktop_surface (surface);
+
+  if (dsurface == NULL)
+    return;
+
+  wl_list_for_each (self,&switcher->windows, link)
+    {
+      if (self->surface == dsurface)
+        return;
+    }
+
+  self = zalloc (sizeof (struct weston_window_switcher_window));
+  if (self == NULL)
+    {
+      wl_client_post_no_memory (switcher->client);
+      return;
+    }
+
+  self->switcher = switcher;
+  self->surface = dsurface;
+
+  self->resource = wl_resource_create (switcher->client, &zww_window_switcher_window_v1_interface,
+                                       wl_resource_get_version (switcher->binding), 0);
+  if (self->resource == NULL)
+    {
+      wl_client_post_no_memory (switcher->client);
+      return;
+    }
+}
 
 static void
 _weston_window_switcher_bind (struct wl_client *client,
@@ -44,6 +90,21 @@ _weston_window_switcher_bind (struct wl_client *client,
   resource = wl_resource_create (client, &zww_window_switcher_v1_interface, version, id);
   wl_resource_set_implementation (resource, &weston_window_switcher_implementation,
                                   self, NULL);
+
+  if (self->binding != NULL)
+    {
+      wl_resource_post_error (resource, ZWW_WINDOW_SWITCHER_V1_ERROR_BOUND,
+                              "interface object already bound");
+      wl_resource_destroy (resource);
+      return;
+    }
+
+  self->client = client;
+  self->binding = resource;
+
+  struct weston_view *view;
+  wl_list_for_each (view, &self->compositor->view_list, link)
+    _weston_window_switcher_window_create (self, view->surface);
 }
 
 WL_EXPORT int
