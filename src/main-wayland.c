@@ -421,8 +421,6 @@ int main (int    argc,
         background_create (server, o);
       }
 
-  xfway_server_shell_init (server);
-
   socket_name = wl_display_add_socket_auto (display);
   if (socket_name)
   {
@@ -430,6 +428,8 @@ int main (int    argc,
     setenv ("WAYLAND_DISPLAY", socket_name, 1);
     unsetenv ("DISPLAY");
   }
+
+  xfway_server_shell_init (server, &argc, &argv);
 
   weston_compositor_wake (server->compositor);
   wl_display_run (display);

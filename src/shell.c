@@ -82,7 +82,8 @@ struct ShellMoveGrab
 };
 
 WL_EXPORT int
-weston_window_switcher_module_init (struct weston_compositor *compositor);
+weston_window_switcher_module_init (struct weston_compositor *compositor,
+                                    int argc, char *argv[]);
 
 static void
 weston_view_set_initial_position(struct weston_view *view,
@@ -765,14 +766,14 @@ bind_desktop_shell(struct wl_client *client,
 			       "permission to bind desktop_shell denied");
 }
 
-void xfway_server_shell_init (DisplayInfo *server)
+void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
 {
   struct weston_desktop *desktop;
   int ret;
 
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
 
-  ret = weston_window_switcher_module_init (server->compositor);
+  ret = weston_window_switcher_module_init (server->compositor, argc, argv);
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,

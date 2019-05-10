@@ -18,6 +18,7 @@
 #include <compositor.h>
 #include <libweston-desktop.h>
 #include <protocol/window-switcher-unstable-v1-server-protocol.h>
+#include <gtk/gtk.h>
 
 struct weston_window_switcher
 {
@@ -76,6 +77,8 @@ _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
       wl_client_post_no_memory (switcher->client);
       return;
     }
+
+  weston_log ("eeeeeeeeeeeeeee\neeeeeeeeeee\n");
 }
 
 static void
@@ -86,6 +89,8 @@ _weston_window_switcher_bind (struct wl_client *client,
 {
   struct weston_window_switcher *self = data;
   struct wl_resource *resource;
+
+  weston_log ("\nenter bind\neeeeeee\neee\neee\n");
 
   resource = wl_resource_create (client, &zww_window_switcher_v1_interface, version, id);
   wl_resource_set_implementation (resource, &weston_window_switcher_implementation,
@@ -108,7 +113,8 @@ _weston_window_switcher_bind (struct wl_client *client,
 }
 
 WL_EXPORT int
-weston_window_switcher_module_init (struct weston_compositor *compositor)
+weston_window_switcher_module_init (struct weston_compositor *compositor,
+                                    int argc, char *argv[])
 {
   struct weston_window_switcher *window_switcher;
   window_switcher = zalloc (sizeof (struct weston_window_switcher));

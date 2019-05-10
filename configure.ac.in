@@ -120,6 +120,7 @@ AC_CHECK_LIB([Xi], [XISelectEvents],
   ], [], [$LIBX11_CFLAGS $LIBX11_LDFLAGS $LIBX11_LIBS])
 
 XDT_CHECK_PACKAGE([WAYLAND_SERVER], [wayland-server], [1.0.0])
+XDT_CHECK_PACKAGE([WAYLAND_CLIENT], [wayland-client], [1.0.0])
 XDT_CHECK_PACKAGE([LIBWESTON], [libweston-6], [6.0.0])
 XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-6], [6.0.0])
 XDT_CHECK_PACKAGE([LIBINPUT], [libinput], [1.10.0])
@@ -325,6 +326,7 @@ AC_OUTPUT([
 Makefile
 src/Makefile
 protocol/Makefile
+test-switcher/Makefile
 po/Makefile.in
 ])
 

@@ -19,7 +19,8 @@ DISTCLEANFILES =							\
 
 SUBDIRS = 								\
 	protocol				\
-	src 							
+	src 					\
+	test-switcher		
 
 BUILT_SOURCES =								\
 	protocol/xfway-shell-client-protocol.c				\

@@ -4,6 +4,7 @@ protocol/*.c
 Makefile
 Makefile.in
 xfway
+test-switcher
 *.o
 *.pc
 /autom4te.cache
