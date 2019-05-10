@@ -12,8 +12,12 @@ test-switcher
 *.pc
 *.so
 .libs
+/aclocal.m4
 /autom4te.cache
+/config.guess
 /config.h
 /config.log
 /config.status
 /config.sub
+/configure
+/configure.ac
