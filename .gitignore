@@ -1,3 +1,4 @@
+*.deps
 build/
 protocol/*.h
 protocol/*.c
@@ -5,8 +6,11 @@ Makefile
 Makefile.in
 xfway
 test-switcher
+*.la
+*.lo
 *.o
 *.pc
+*.so
 /autom4te.cache
 /config.h
 /config.log
