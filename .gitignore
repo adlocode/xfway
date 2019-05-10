@@ -11,6 +11,7 @@ test-switcher
 *.o
 *.pc
 *.so
+.libs
 /autom4te.cache
 /config.h
 /config.log
