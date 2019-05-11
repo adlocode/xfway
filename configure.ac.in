@@ -326,7 +326,6 @@ AC_OUTPUT([
 Makefile
 src/Makefile
 protocol/Makefile
-test-switcher/Makefile
 po/Makefile.in
 ])
 
