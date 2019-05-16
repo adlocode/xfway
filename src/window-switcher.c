@@ -114,6 +114,8 @@ _weston_window_switcher_bind (struct wl_client *client,
   struct weston_window_switcher *self = data;
   struct wl_resource *resource;
 
+  weston_log ("\nserver: switcher bind\n");
+
   resource = wl_resource_create (client, &zww_window_switcher_v1_interface, version, id);
   wl_resource_set_implementation (resource, &weston_window_switcher_implementation,
                                   self, NULL);
@@ -146,7 +148,7 @@ weston_window_switcher_module_init (struct weston_compositor *compositor,
   wl_list_init (&window_switcher->windows);
 
   if (wl_global_create (window_switcher->compositor->wl_display,
-                        &zww_window_switcher_window_v1_interface, 1,
+                        &zww_window_switcher_v1_interface, 1,
                         window_switcher, _weston_window_switcher_bind) == NULL)
     return -1;
 

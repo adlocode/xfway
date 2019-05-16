@@ -330,6 +330,7 @@ Makefile
 src/Makefile
 protocol/Makefile
 po/Makefile.in
+tests/test-switcher/Makefile
 ])
 
 dnl XDT_CHECK_PACKAGE([XFWAY_PROTOCOLS], [xfway-protocols], [0.0.0])

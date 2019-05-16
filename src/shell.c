@@ -754,6 +754,8 @@ bind_desktop_shell(struct wl_client *client,
 	resource = wl_resource_create(client, &xfway_shell_interface,
 				      1, id);
 
+  weston_log ("\nbind desktop shell\n");
+
 	/*if (client == shell->child.client) {
 		wl_resource_set_implementation(resource,
 					       &desktop_shell_implementation,
