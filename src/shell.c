@@ -764,8 +764,8 @@ bind_desktop_shell(struct wl_client *client,
 		return;
 	}*/
 
-	wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
-			       "permission to bind desktop_shell denied");
+	//wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
+			       //"permission to bind desktop_shell denied");
 }
 
 void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])

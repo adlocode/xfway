@@ -6,6 +6,7 @@
 
 struct wl_display *display = NULL;
 static struct wl_registry *registry = NULL;
+struct zww_window_switcher_v1 *switcher = NULL;
 
 void switcher_window ()
 {
@@ -23,13 +24,15 @@ void global_add(void *our_data,
         uint32_t version) {
 
           if (strcmp(interface, "zww_window_switcher_v1") == 0) {
-          struct zww_window_switcher_v1 *switcher = NULL;
+          if (switcher == NULL)
+              {
           switcher = wl_registry_bind (registry, name, &zww_window_switcher_v1_interface,
                                1);
             printf ("%s", "\nclient: bind switcher\n");
 
             zww_window_switcher_v1_add_listener(switcher,
 				      &switcher_listener, NULL);
+              }
           }
           else if (strcmp(interface, "xfway_shell") == 0) {
           struct xfway_shell *xfshell = NULL;
