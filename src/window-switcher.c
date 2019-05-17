@@ -105,6 +105,14 @@ _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
                                  self, _weston_window_switcher_window_destroy);
   zww_window_switcher_v1_send_window (switcher->binding, self->resource);
 
+  const char *title = weston_desktop_surface_get_title (self->surface);
+  if (title != NULL)
+      zww_window_switcher_window_v1_send_title (self->resource, title);
+const char *app_id = weston_desktop_surface_get_app_id (self->surface);
+if (app_id != NULL)
+      zww_window_switcher_window_v1_send_app_id (self->resource, app_id);
+zww_window_switcher_window_v1_send_done (self->resource);
+
 }
 
 static void
