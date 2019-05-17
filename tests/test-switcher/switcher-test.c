@@ -9,7 +9,7 @@ static struct wl_registry *registry = NULL;
 
 void switcher_window ()
 {
-
+  printf ("%s", "client: window");
 }
 
 struct zww_window_switcher_v1_listener switcher_listener = {
@@ -24,7 +24,7 @@ void global_add(void *our_data,
 
           if (strcmp(interface, "zww_window_switcher_v1") == 0) {
           struct zww_window_switcher_v1 *switcher = NULL;
-          switcher = wl_registry_bind (registry, 1, &zww_window_switcher_v1_interface,
+          switcher = wl_registry_bind (registry, name, &zww_window_switcher_v1_interface,
                                1);
             printf ("%s", "\nclient: bind switcher\n");
 
@@ -33,7 +33,7 @@ void global_add(void *our_data,
           }
           else if (strcmp(interface, "xfway_shell") == 0) {
           struct xfway_shell *xfshell = NULL;
-          xfshell = wl_registry_bind (registry, 1, &xfway_shell_interface,
+          xfshell = wl_registry_bind (registry, name, &xfway_shell_interface,
                                1);
             printf ("%s", "\nclient: bind shell\n");
           }
@@ -56,6 +56,7 @@ int main (int    argc,
           char **argv)
 {
   display = wl_display_connect (NULL);
+  int ret = 0;
 
   if (display == NULL)
     {
@@ -66,8 +67,11 @@ int main (int    argc,
 
   wl_registry_add_listener(registry, &registry_listener, NULL);
 
-  wl_display_dispatch (display);
-  wl_display_dispatch (display);
+  wl_display_roundtrip (display);
+  wl_display_roundtrip (display);
+
+  while (ret != -1)
+    ret = wl_display_dispatch (display);
 
   return 0;
 }

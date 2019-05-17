@@ -73,6 +73,8 @@ _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
   if (dsurface == NULL)
     return;
 
+  weston_log ("\nserver: window create\n");
+
   wl_list_for_each (self,&switcher->windows, link)
     {
       if (self->surface == dsurface)
