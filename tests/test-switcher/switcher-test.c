@@ -8,9 +8,11 @@ struct wl_display *display = NULL;
 static struct wl_registry *registry = NULL;
 struct zww_window_switcher_v1 *switcher = NULL;
 
-void switcher_window ()
+void switcher_window (void                                 *data,
+                      struct zww_window_switcher_v1        *zww_window_switcher_v1,
+                      struct zww_window_switcher_window_v1 *window)
 {
-  printf ("%s", "client: window");
+  fprintf (stderr, "client: window\n");
 }
 
 struct zww_window_switcher_v1_listener switcher_listener = {
