@@ -30,6 +30,8 @@
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
 
+struct weston_window_switcher;
+
 struct _DisplayInfo
 {
   struct weston_compositor *compositor;
@@ -49,6 +51,8 @@ struct _DisplayInfo
   int (*simple_output_configure)(struct weston_output *output);
 
   GdkDisplay *gdisplay;
+
+  struct weston_window_switcher *window_switcher;
 };
 
 typedef struct _DisplayInfo DisplayInfo;

@@ -111,7 +111,7 @@ static const struct zww_window_switcher_window_v1_interface weston_window_switch
   .show = _weston_window_switcher_window_request_show,
 };
 
-static void
+void
 _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
                                        struct weston_surface         *surface)
 {
@@ -119,6 +119,9 @@ _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
   struct weston_desktop_surface *dsurface = weston_surface_get_desktop_surface (surface);
 
   if (dsurface == NULL)
+    return;
+
+  if (switcher->client == NULL)
     return;
 
   weston_log ("\nserver: window create\n");
@@ -201,12 +204,14 @@ _weston_window_switcher_bind (struct wl_client *client,
 
 WL_EXPORT int
 weston_window_switcher_module_init (struct weston_compositor *compositor,
+                                    struct weston_window_switcher **out_switcher,
                                     int argc, char *argv[])
 {
   struct weston_window_switcher *window_switcher;
   window_switcher = zalloc (sizeof (struct weston_window_switcher));
 
   window_switcher->compositor = compositor;
+  window_switcher->client = NULL;
 
   wl_list_init (&window_switcher->windows);
 
@@ -214,6 +219,8 @@ weston_window_switcher_module_init (struct weston_compositor *compositor,
                         &zww_window_switcher_v1_interface, 1,
                         window_switcher, _weston_window_switcher_bind) == NULL)
     return -1;
+
+  *out_switcher = window_switcher;
 
   return 0;
 }

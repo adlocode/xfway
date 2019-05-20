@@ -83,7 +83,12 @@ struct ShellMoveGrab
 
 WL_EXPORT int
 weston_window_switcher_module_init (struct weston_compositor *compositor,
+                                    struct weston_window_switcher **out_switcher,
                                     int argc, char *argv[]);
+
+void
+_weston_window_switcher_window_create (struct weston_window_switcher *switcher,
+                                       struct weston_surface         *surface);
 
 static void
 weston_view_set_initial_position(struct weston_view *view,
@@ -205,6 +210,8 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 
   weston_surface_damage (self->surface);
   weston_compositor_schedule_repaint (server->compositor);
+
+  _weston_window_switcher_window_create (server->window_switcher, self->surface);
 
   weston_desktop_surface_set_activated (desktop_surface, true);
 
@@ -775,7 +782,7 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
 
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
 
-  ret = weston_window_switcher_module_init (server->compositor, argc, argv);
+  ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,
