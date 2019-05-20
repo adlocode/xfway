@@ -45,11 +45,6 @@ static void _weston_window_switcher_request_destroy (struct wl_client   *client,
 
 }
 
-static const struct zww_window_switcher_v1_interface weston_window_switcher_implementation =
-{
-  .destroy = _weston_window_switcher_request_destroy,
-};
-
 static void
 _weston_window_switcher_window_surface_destroyed (struct wl_listener *listener,
                                                   void               *data)
@@ -89,6 +84,34 @@ _weston_window_switcher_window_request_switch_to (struct wl_client   *client,
 }
 
 static void
+_weston_window_switcher_window_request_close (struct wl_client   *client,
+                                              struct wl_resource *resource,
+                                              struct wl_resource *seat_resource,
+                                              uint32_t            serial)
+{
+
+}
+
+static void
+_weston_window_switcher_window_request_show (struct wl_client   *client,
+                                             struct wl_resource *resource,
+                                             struct wl_resource *surface,
+                                             int32_t             x,
+                                             int32_t             y,
+                                             int32_t             width,
+                                             int32_t             height)
+{
+
+}
+
+static const struct zww_window_switcher_window_v1_interface weston_window_switcher_window_implementation = {
+  .destroy = _weston_window_switcher_request_destroy,
+  .switch_to = _weston_window_switcher_window_request_switch_to,
+  .close = _weston_window_switcher_window_request_close,
+  .show = _weston_window_switcher_window_request_show,
+};
+
+static void
 _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
                                        struct weston_surface         *surface)
 {
@@ -126,7 +149,7 @@ _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
 
   self->surface_destroy_listener.notify = _weston_window_switcher_window_surface_destroyed;
   wl_signal_add (&surface->destroy_signal, &self->surface_destroy_listener);
-  wl_resource_set_implementation(self->resource, &weston_window_switcher_implementation,
+  wl_resource_set_implementation(self->resource, &weston_window_switcher_window_implementation,
                                  self, _weston_window_switcher_window_destroy);
   zww_window_switcher_v1_send_window (switcher->binding, self->resource);
 
@@ -139,6 +162,11 @@ if (app_id != NULL)
 zww_window_switcher_window_v1_send_done (self->resource);
 
 }
+
+static const struct zww_window_switcher_v1_interface weston_window_switcher_implementation =
+{
+  .destroy = _weston_window_switcher_request_destroy,
+};
 
 static void
 _weston_window_switcher_bind (struct wl_client *client,
