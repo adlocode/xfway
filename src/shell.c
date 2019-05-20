@@ -644,10 +644,10 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
                         void                             *server)
 {
   struct weston_pointer *pointer = weston_seat_get_pointer(seat);
-	CWindowWayland *shsurf =
+	CWindowWayland *cw =
 		weston_desktop_surface_get_user_data(desktop_surface);
 	struct weston_surface *surface =
-		weston_desktop_surface_get_surface(shsurf->desktop_surface);
+		weston_desktop_surface_get_surface(cw->desktop_surface);
 	struct wl_resource *resource = surface->resource;
 	struct weston_surface *focus;
 
@@ -669,7 +669,7 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
 	const unsigned resize_any = resize_topbottom | resize_leftright;
 	struct weston_geometry geometry;
 
-  if (shsurf->grabbed)
+  if (cw->grabbed)
     return;
 
 	/* Check for invalid edge combinations. */
@@ -684,26 +684,26 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
 
 	resize->edges = edges;
 
-	geometry = weston_desktop_surface_get_geometry(shsurf->desktop_surface);
+	geometry = weston_desktop_surface_get_geometry(cw->desktop_surface);
 	resize->width = geometry.width;
 	resize->height = geometry.height;
 
-	shsurf->resize_edges = edges;
-	weston_desktop_surface_set_resizing(shsurf->desktop_surface, true);
-	shell_grab_start(&resize->base, &resize_grab_interface, shsurf,
+	cw->resize_edges = edges;
+	weston_desktop_surface_set_resizing(cw->desktop_surface, true);
+	shell_grab_start(&resize->base, &resize_grab_interface, cw,
 			 pointer);
 }
 
 static void
-set_maximized (CWindowWayland *shsurf,
+set_maximized (CWindowWayland *cw,
                bool                 maximized)
 {
   struct weston_surface *surface =
-          weston_desktop_surface_get_surface (shsurf->desktop_surface);
+          weston_desktop_surface_get_surface (cw->desktop_surface);
 
   int32_t width = 0, height = 0;
 
-  weston_desktop_surface_set_maximized (shsurf->desktop_surface, maximized);
+  weston_desktop_surface_set_maximized (cw->desktop_surface, maximized);
 
   if (maximized)
     {
@@ -711,7 +711,7 @@ set_maximized (CWindowWayland *shsurf,
       height = surface->output->height;
     }
 
-  weston_desktop_surface_set_size (shsurf->desktop_surface, width, height);
+  weston_desktop_surface_set_size (cw->desktop_surface, width, height);
 }
 
 static void
