@@ -49,7 +49,9 @@ static void
 _weston_window_switcher_window_surface_destroyed (struct wl_listener *listener,
                                                   void               *data)
 {
+  struct weston_window_switcher_window *self = wl_container_of (listener, self, surface_destroy_listener);
 
+  self->surface = NULL;
 }
 
 static void
