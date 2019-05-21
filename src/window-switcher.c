@@ -91,7 +91,21 @@ _weston_window_switcher_window_request_close (struct wl_client   *client,
                                               struct wl_resource *seat_resource,
                                               uint32_t            serial)
 {
+  struct weston_window_switcher_window *self = wl_resource_get_user_data (resource);
+  struct weston_seat *seat = wl_resource_get_user_data (seat_resource);
+  struct weston_keyboard *keyboard = weston_seat_get_keyboard (seat);
+  struct weston_pointer *pointer = weston_seat_get_pointer (seat);
+  struct weston_touch *touch = weston_seat_get_touch (seat);
 
+  if (keyboard == NULL)
+    return;
+
+  if ((keyboard != NULL) && (keyboard->grab_serial == serial))
+    weston_desktop_surface_close (self->surface);
+  else if ((pointer != NULL) && (pointer->grab_serial == serial))
+    weston_desktop_surface_close (self->surface);
+  else if ((touch != NULL) && (touch->grab_serial == serial))
+    weston_desktop_surface_close (self->surface);
 }
 
 static void
