@@ -17,6 +17,10 @@
 #include "server.h"
 #include <protocol/xfway-shell-server-protocol.h>
 #include <protocol/window-switcher-unstable-v1-server-protocol.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include "os-compatibility.h"
 
 /**
  * Returns the smaller of two values.
@@ -45,6 +49,28 @@
 	const __typeof__( ((type *)0)->member ) *__mptr = (ptr);	\
 	(type *)( (char *)__mptr - offsetof(type,member) );})
 #endif
+
+struct weston_process;
+typedef void (*weston_process_cleanup_func_t)(struct weston_process *process,
+					    int status);
+
+struct weston_process {
+	pid_t pid;
+	weston_process_cleanup_func_t cleanup;
+	struct wl_list link;
+};
+
+struct wl_client *
+weston_client_launch(struct weston_compositor *compositor,
+		     struct weston_process *proc,
+		     const char *path,
+		     weston_process_cleanup_func_t cleanup);
+
+struct wl_client *
+weston_client_start(struct weston_compositor *compositor, const char *path);
+
+void
+weston_watch_process(struct weston_process *process);
 
 struct _CWindowWayland
 {
@@ -775,10 +801,212 @@ bind_desktop_shell(struct wl_client *client,
 			       //"permission to bind desktop_shell denied");
 }
 
+static struct wl_list child_process_list;
+static struct weston_compositor *segv_compositor;
+
+static int
+sigchld_handler(int signal_number, void *data)
+{
+	struct weston_process *p;
+	int status;
+	pid_t pid;
+
+	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+		wl_list_for_each(p, &child_process_list, link) {
+			if (p->pid == pid)
+				break;
+		}
+
+		if (&p->link == &child_process_list) {
+			weston_log("unknown child process exited\n");
+			continue;
+		}
+
+		wl_list_remove(&p->link);
+		p->cleanup(p, status);
+	}
+
+	if (pid < 0 && errno != ECHILD)
+		weston_log("waitpid error %m\n");
+
+	return 1;
+}
+
+static void
+child_client_exec(int sockfd, const char *path)
+{
+	int clientfd;
+	char s[32];
+	sigset_t allsigs;
+
+	/* do not give our signal mask to the new process */
+	sigfillset(&allsigs);
+	sigprocmask(SIG_UNBLOCK, &allsigs, NULL);
+
+	/* Launch clients as the user. Do not lauch clients with wrong euid.*/
+	if (seteuid(getuid()) == -1) {
+		weston_log("compositor: failed seteuid\n");
+		return;
+	}
+
+	/* SOCK_CLOEXEC closes both ends, so we dup the fd to get a
+	 * non-CLOEXEC fd to pass through exec. */
+	clientfd = dup(sockfd);
+	if (clientfd == -1) {
+		weston_log("compositor: dup failed: %m\n");
+		return;
+	}
+
+	snprintf(s, sizeof s, "%d", clientfd);
+	setenv("WAYLAND_SOCKET", s, 1);
+
+	if (execl(path, path, NULL) < 0)
+		weston_log("compositor: executing '%s' failed: %m\n",
+			path);
+}
+
+WL_EXPORT struct wl_client *
+weston_client_launch(struct weston_compositor *compositor,
+		     struct weston_process *proc,
+		     const char *path,
+		     weston_process_cleanup_func_t cleanup)
+{
+	int sv[2];
+	pid_t pid;
+	struct wl_client *client;
+
+	weston_log("launching '%s'\n", path);
+
+	if (os_socketpair_cloexec(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
+		weston_log("weston_client_launch: "
+			"socketpair failed while launching '%s': %m\n",
+			path);
+		return NULL;
+	}
+
+	pid = fork();
+	if (pid == -1) {
+		close(sv[0]);
+		close(sv[1]);
+		weston_log("weston_client_launch: "
+			"fork failed while launching '%s': %m\n", path);
+		return NULL;
+	}
+
+	if (pid == 0) {
+		child_client_exec(sv[1], path);
+		_exit(-1);
+	}
+
+	close(sv[1]);
+
+	client = wl_client_create(compositor->wl_display, sv[0]);
+	if (!client) {
+		close(sv[0]);
+		weston_log("weston_client_launch: "
+			"wl_client_create failed while launching '%s'.\n",
+			path);
+		return NULL;
+	}
+
+	proc->pid = pid;
+	proc->cleanup = cleanup;
+	weston_watch_process(proc);
+
+	return client;
+}
+
+WL_EXPORT void
+weston_watch_process(struct weston_process *process)
+{
+	wl_list_insert(&child_process_list, &process->link);
+}
+
+struct process_info {
+	struct weston_process proc;
+	char *path;
+};
+
+static void
+process_handle_sigchld(struct weston_process *process, int status)
+{
+	struct process_info *pinfo =
+		container_of(process, struct process_info, proc);
+
+	/*
+	 * There are no guarantees whether this runs before or after
+	 * the wl_client destructor.
+	 */
+
+	if (WIFEXITED(status)) {
+		weston_log("%s exited with status %d\n", pinfo->path,
+			   WEXITSTATUS(status));
+	} else if (WIFSIGNALED(status)) {
+		weston_log("%s died on signal %d\n", pinfo->path,
+			   WTERMSIG(status));
+	} else {
+		weston_log("%s disappeared\n", pinfo->path);
+	}
+
+	free(pinfo->path);
+	free(pinfo);
+}
+
+WL_EXPORT struct wl_client *
+weston_client_start(struct weston_compositor *compositor, const char *path)
+{
+	struct process_info *pinfo;
+	struct wl_client *client;
+
+	pinfo = zalloc(sizeof *pinfo);
+	if (!pinfo)
+		return NULL;
+
+	pinfo->path = strdup(path);
+	if (!pinfo->path)
+		goto out_free;
+
+	client = weston_client_launch(compositor, &pinfo->proc, path,
+				      process_handle_sigchld);
+	if (!client)
+		goto out_str;
+
+	return client;
+
+out_str:
+	free(pinfo->path);
+
+out_free:
+	free(pinfo);
+
+	return NULL;
+}
+
+static void
+launch_desktop_shell_process(void *data)
+{
+	DisplayInfo *server = data;
+  struct wl_client *client;
+
+  client = weston_client_start (server->compositor, "src/xfway-shell");
+
+	/*if (!shell->child.client) {
+		weston_log("not able to start %s\n", shell->client);
+		return;
+	}
+
+	shell->child.client_destroy_listener.notify =
+		desktop_shell_client_destroy;
+	wl_client_add_destroy_listener(shell->child.client,
+				       &shell->child.client_destroy_listener);*/
+}
+
 void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
 {
   struct weston_desktop *desktop;
   int ret;
+  struct weston_client *client;
+  struct wl_event_loop *loop;
 
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
 
@@ -787,6 +1015,10 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,
                     server, bind_desktop_shell);
+
+  /*This loads the client successfully but then segfaults
+   * loop = wl_display_get_event_loop(server->compositor->wl_display);
+	wl_event_loop_add_idle(loop, launch_desktop_shell_process, server);*/
 
   weston_layer_init (&server->surfaces_layer, server->compositor);
   weston_layer_set_position (&server->surfaces_layer, WESTON_LAYER_POSITION_NORMAL);

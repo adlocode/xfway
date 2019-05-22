@@ -1,4 +1,4 @@
-bin_PROGRAMS = xfway
+bin_PROGRAMS = xfway xfway-shell
 
 xfway_SOURCES = \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.c \
@@ -6,6 +6,8 @@ $(top_srcdir)/protocol/xfway-shell-client-protocol.h \
 $(top_srcdir)/protocol/xfway-shell-server-protocol.h \
 $(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.c \
 $(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.h \
+os-compatibility.c \
+os-compatibility.h \
 window-switcher.c \
 shell.c \
 shell.h \
@@ -32,3 +34,15 @@ $(EGL_LIBS) \
 $(EVDEV_LIBS) \
 $(PIXMAN_LIBS) \
 $(GTK_LIBS)
+
+xfway_shell_SOURCES = \
+$(top_srcdir)/protocol/xfway-shell-client-protocol.c \
+$(top_srcdir)/protocol/xfway-shell-client-protocol.h \
+main-shell-client.c
+
+xfway_shell_CFLAGS = \
+$(WAYLAND_CLIENT_CFLAGS)
+
+xfway_shell_LDADD = \
+$(WAYLAND_CLIENT_LIBS)
+

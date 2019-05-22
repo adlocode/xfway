@@ -5,6 +5,7 @@ protocol/*.c
 Makefile
 Makefile.in
 xfway
+xfway-shell
 tests/test-switcher/test-switcher
 *.la
 *.lo
