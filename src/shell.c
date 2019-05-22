@@ -1008,6 +1008,8 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   struct weston_client *client;
   struct wl_event_loop *loop;
 
+  wl_list_init(&child_process_list);
+
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
 
   ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
@@ -1016,9 +1018,8 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
                     &xfway_shell_interface, 1,
                     server, bind_desktop_shell);
 
-  /*This loads the client successfully but then segfaults
-   * loop = wl_display_get_event_loop(server->compositor->wl_display);
-	wl_event_loop_add_idle(loop, launch_desktop_shell_process, server);*/
+  loop = wl_display_get_event_loop(server->compositor->wl_display);
+	wl_event_loop_add_idle(loop, launch_desktop_shell_process, server);
 
   weston_layer_init (&server->surfaces_layer, server->compositor);
   weston_layer_set_position (&server->surfaces_layer, WESTON_LAYER_POSITION_NORMAL);
