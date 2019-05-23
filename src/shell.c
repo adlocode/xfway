@@ -88,6 +88,7 @@ struct _CWindowWayland
   DisplayInfo *server;
 
   struct weston_output *output;
+  struct wl_listener output_destroy_listener;
 
   bool maximized;
 };
@@ -115,6 +116,56 @@ weston_window_switcher_module_init (struct weston_compositor *compositor,
 void
 _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
                                        struct weston_surface         *surface);
+
+struct weston_output *
+get_default_output(struct weston_compositor *compositor)
+{
+	if (wl_list_empty(&compositor->output_list))
+		return NULL;
+
+	return container_of(compositor->output_list.next,
+			    struct weston_output, link);
+}
+
+static void
+notify_output_destroy(struct wl_listener *listener, void *data)
+{
+	CWindowWayland *cw =
+		container_of(listener,
+			     CWindowWayland, output_destroy_listener);
+
+	cw->output = NULL;
+	cw->output_destroy_listener.notify = NULL;
+}
+
+static void
+shell_surface_set_output(CWindowWayland *cw,
+                         struct weston_output *output)
+{
+	struct weston_surface *es =
+		weston_desktop_surface_get_surface(cw->desktop_surface);
+
+	/* get the default output, if the client set it as NULL
+	   check whether the output is available */
+	if (output)
+		cw->output = output;
+	else if (es->output)
+		cw->output = es->output;
+	else
+		cw->output = get_default_output(es->compositor);
+
+	if (cw->output_destroy_listener.notify) {
+		wl_list_remove(&cw->output_destroy_listener.link);
+		cw->output_destroy_listener.notify = NULL;
+	}
+
+	if (!cw->output)
+		return;
+
+	cw->output_destroy_listener.notify = notify_output_destroy;
+	wl_signal_add(&cw->output->destroy_signal,
+		      &cw->output_destroy_listener);
+}
 
 static void
 weston_view_set_initial_position(struct weston_view *view,
@@ -175,16 +226,6 @@ weston_view_set_initial_position(struct weston_view *view,
 	weston_view_set_position(view, x, y);
 }
 
-struct weston_output *
-get_default_output(struct weston_compositor *compositor)
-{
-	if (wl_list_empty(&compositor->output_list))
-		return NULL;
-
-	return container_of(compositor->output_list.next,
-			    struct weston_output, link);
-}
-
 static void
 unset_maximized(CWindowWayland *cw)
 {
@@ -226,6 +267,8 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   self->server = server;
 
   self->saved_position_valid = false;
+
+  shell_surface_set_output (self, get_default_output (self->server->compositor));
 
   weston_desktop_surface_set_user_data (self->desktop_surface, self);
 
@@ -272,6 +315,29 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
 }
 
 static void
+get_output_work_area(DisplayInfo *shell,
+		     struct weston_output *output,
+		     pixman_rectangle32_t *area)
+{
+	int32_t panel_width = 0, panel_height = 0;
+
+	if (!output) {
+		area->x = 0;
+		area->y = 0;
+		area->width = 0;
+		area->height = 0;
+
+		return;
+	}
+
+	area->x = output->x;
+	area->y = output->y;
+
+  area->width = output->width;
+	area->height = output->height;
+}
+
+static void
 set_maximized_position (CWindowWayland *cw)
 {
 	pixman_rectangle32_t area;
@@ -280,7 +346,7 @@ set_maximized_position (CWindowWayland *cw)
   area.x = cw->surface->output->x;
   area.y = cw->surface->output->y;
 
-	//get_output_work_area(shell, cw->output, &area);
+	get_output_work_area(NULL, cw->output, &area);
 	geometry = weston_desktop_surface_get_geometry(cw->desktop_surface);
 
 	weston_view_set_position(cw->view,
@@ -292,6 +358,7 @@ static void
 map(DisplayInfo *shell, CWindowWayland *cw,
     int32_t sx, int32_t sy)
 {
+  struct weston_surface *surface = weston_desktop_surface_get_surface (cw->desktop_surface);
   if (cw->maximized)
     set_maximized_position (cw);
   else
@@ -299,6 +366,12 @@ map(DisplayInfo *shell, CWindowWayland *cw,
 
 	weston_view_update_transform(cw->view);
   cw->view->is_mapped = true;
+
+  if (cw->maximized)
+    {
+      surface->output = cw->output;
+      weston_view_set_output (cw->view, cw->output);
+    }
 
 }
 
@@ -346,7 +419,10 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 	}
 
   if (cw->maximized)
-		set_maximized_position(cw);
+    {
+		  set_maximized_position(cw);
+      surface->output = cw->output;
+    }
 
   cw->last_width = surface->width;
 	cw->last_height = surface->height;
@@ -727,6 +803,50 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
 			 pointer);
 }
 
+static struct weston_output *
+get_focused_output(struct weston_compositor *compositor)
+{
+	struct weston_seat *seat;
+	struct weston_output *output = NULL;
+
+	wl_list_for_each(seat, &compositor->seat_list, link) {
+		struct weston_touch *touch = weston_seat_get_touch(seat);
+		struct weston_pointer *pointer = weston_seat_get_pointer(seat);
+		struct weston_keyboard *keyboard =
+			weston_seat_get_keyboard(seat);
+
+		/* Priority has touch focus, then pointer and
+		 * then keyboard focus. We should probably have
+		 * three for loops and check frist for touch,
+		 * then for pointer, etc. but unless somebody has some
+		 * objections, I think this is sufficient. */
+		if (touch && touch->focus)
+			output = touch->focus->output;
+		else if (pointer && pointer->focus)
+			output = pointer->focus->output;
+		else if (keyboard && keyboard->focus)
+			output = keyboard->focus->output;
+
+		if (output)
+			break;
+	}
+
+	return output;
+}
+
+static void
+get_maximized_size(CWindowWayland *cw, int32_t *width, int32_t *height)
+{
+	DisplayInfo *shell = NULL;
+	pixman_rectangle32_t area;
+
+	//shell = shell_surface_get_shell(cw);
+	get_output_work_area(shell, cw->output, &area);
+
+	*width = area.width;
+	*height = area.height;
+}
+
 static void
 set_maximized (CWindowWayland *cw,
                bool                 maximized)
@@ -736,15 +856,20 @@ set_maximized (CWindowWayland *cw,
 
   int32_t width = 0, height = 0;
 
-  weston_desktop_surface_set_maximized (cw->desktop_surface, maximized);
+  if (maximized) {
+		struct weston_output *output;
 
-  if (maximized)
-    {
-      width = surface->output->width;
-      height = surface->output->height;
-    }
+		if (!weston_surface_is_mapped(surface))
+			output = get_focused_output(surface->compositor);
+		else
+			output = surface->output;
 
-  weston_desktop_surface_set_size (cw->desktop_surface, width, height);
+		shell_surface_set_output(cw, output);
+
+		get_maximized_size(cw, &width, &height);
+	}
+	weston_desktop_surface_set_maximized(cw->desktop_surface, maximized);
+	weston_desktop_surface_set_size(cw->desktop_surface, width, height);
 }
 
 static void
