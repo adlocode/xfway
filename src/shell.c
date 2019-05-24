@@ -95,6 +95,22 @@ struct _CWindowWayland
 
 typedef struct _CWindowWayland CWindowWayland;
 
+struct _Shell
+{
+  DisplayInfo *display_info;
+
+  struct {
+		struct wl_client *client;
+		struct wl_resource *desktop_shell;
+		struct wl_listener client_destroy_listener;
+
+		unsigned deathcount;
+		struct timespec deathstamp;
+	} child;
+};
+
+typedef struct _Shell Shell;
+
 struct ShellGrab
 {
   struct weston_pointer_grab grab;
@@ -903,10 +919,18 @@ static const struct xfway_shell_interface xfway_desktop_shell_implementation =
 };
 
 static void
+unbind_desktop_shell(struct wl_resource *resource)
+{
+	Shell *shell = wl_resource_get_user_data(resource);
+
+	shell->child.desktop_shell = NULL;
+}
+
+static void
 bind_desktop_shell(struct wl_client *client,
 		   void *data, uint32_t version, uint32_t id)
 {
-	struct DisplayInfo *shell = data;
+	Shell *shell = data;
 	struct wl_resource *resource;
 
 	resource = wl_resource_create(client, &xfway_shell_interface,
@@ -914,16 +938,16 @@ bind_desktop_shell(struct wl_client *client,
 
   weston_log ("\nbind desktop shell\n");
 
-	/*if (client == shell->child.client) {
+	if (client == shell->child.client) {
 		wl_resource_set_implementation(resource,
-					       &desktop_shell_implementation,
+					       &xfway_desktop_shell_implementation,
 					       shell, unbind_desktop_shell);
 		shell->child.desktop_shell = resource;
 		return;
-	}*/
+	}
 
-	//wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
-			       //"permission to bind desktop_shell denied");
+	wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
+			       "permission to bind desktop_shell denied");
 }
 
 static struct wl_list child_process_list;
@@ -1108,31 +1132,59 @@ out_free:
 }
 
 static void
+desktop_shell_client_destroy(struct wl_listener *listener, void *data)
+{
+	Shell *shell;
+
+	shell = container_of(listener, Shell,
+			     child.client_destroy_listener);
+
+	wl_list_remove(&shell->child.client_destroy_listener.link);
+	shell->child.client = NULL;
+	/*
+	 * unbind_desktop_shell() will reset shell->child.desktop_shell
+	 * before the respawned process has a chance to create a new
+	 * desktop_shell object, because we are being called from the
+	 * wl_client destructor which destroys all wl_resources before
+	 * returning.
+	 */
+
+	//if (!check_desktop_shell_crash_too_early(shell))
+		//respawn_desktop_shell_process(shell);
+
+	//shell_fade_startup(shell);
+}
+
+static void
 launch_desktop_shell_process(void *data)
 {
-	DisplayInfo *server = data;
+	Shell *shell = data;
   struct wl_client *client;
+  DisplayInfo *display_info = shell->display_info;
 
-  client = weston_client_start (server->compositor, "src/xfway-shell");
+  shell->child.client = weston_client_start (display_info->compositor, "src/xfway-shell");
 
-	/*if (!shell->child.client) {
-		weston_log("not able to start %s\n", shell->client);
+	if (!shell->child.client) {
+		weston_log("not able to start client");
 		return;
 	}
 
 	shell->child.client_destroy_listener.notify =
 		desktop_shell_client_destroy;
 	wl_client_add_destroy_listener(shell->child.client,
-				       &shell->child.client_destroy_listener);*/
+				       &shell->child.client_destroy_listener);
 }
 
 void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
 {
+  Shell *shell;
   struct weston_desktop *desktop;
   int ret;
   struct weston_client *client;
   struct wl_event_loop *loop;
 
+  shell = zalloc (sizeof (shell));
+  shell->display_info = server;
   wl_list_init(&child_process_list);
 
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
@@ -1141,10 +1193,10 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,
-                    server, bind_desktop_shell);
+                    shell, bind_desktop_shell);
 
   loop = wl_display_get_event_loop(server->compositor->wl_display);
-	wl_event_loop_add_idle(loop, launch_desktop_shell_process, server);
+	wl_event_loop_add_idle(loop, launch_desktop_shell_process, shell);
 
   weston_layer_init (&server->surfaces_layer, server->compositor);
   weston_layer_set_position (&server->surfaces_layer, WESTON_LAYER_POSITION_NORMAL);
