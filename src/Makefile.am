@@ -8,6 +8,7 @@ $(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.c \
 $(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.h \
 os-compatibility.c \
 os-compatibility.h \
+xfway.h \
 window-switcher.c \
 shell.c \
 shell.h \
