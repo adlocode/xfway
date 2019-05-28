@@ -18,6 +18,8 @@
 #include "xfway.h"
 #include <protocol/xfway-shell-server-protocol.h>
 #include <protocol/window-switcher-unstable-v1-server-protocol.h>
+#include <protocol/wlr-foreign-toplevel-management-unstable-v1-protocol.h>
+#include "wlr_foreign_toplevel_management_v1.h"
 
 /**
  * Returns the smaller of two values.
@@ -978,6 +980,7 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   int ret;
   struct weston_client *client;
   struct wl_event_loop *loop;
+  struct wlr_foreign_toplevel_manager_v1 *manager;
 
   shell = zalloc (sizeof (shell));
   shell->display_info = server;
@@ -985,6 +988,8 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
 
   ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
+
+  manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,

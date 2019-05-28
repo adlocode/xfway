@@ -6,6 +6,12 @@ $(top_srcdir)/protocol/xfway-shell-client-protocol.h \
 $(top_srcdir)/protocol/xfway-shell-server-protocol.h \
 $(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.c \
 $(top_srcdir)/protocol/window-switcher-unstable-v1-server-protocol.h \
+$(top_srcdir)/util/signal.c \
+$(top_srcdir)/util/signal.h \
+$(top_srcdir)/protocol/wlr-foreign-toplevel-management-unstable-v1-protocol.c \
+$(top_srcdir)/wlr-foreign-toplevel-management-unstable-v1-protocol.h \
+wlr_foreign_toplevel_management_v1.c \
+wlr_foreign_toplevel_management_v1.h \
 os-compatibility.c \
 os-compatibility.h \
 xfway.h \
