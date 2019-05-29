@@ -982,7 +982,7 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   struct wl_event_loop *loop;
   struct wlr_foreign_toplevel_manager_v1 *manager;
 
-  shell = zalloc (sizeof (shell));
+  shell = zalloc (sizeof (Shell));
   shell->display_info = server;
 
   desktop = weston_desktop_create (server->compositor, &desktop_api, server);
