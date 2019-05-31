@@ -552,7 +552,7 @@ int main (int    argc,
 
   wl_list_init(&child_process_list);
 
-	server->compositor = weston_compositor_create (display, NULL);
+	server->compositor = weston_compositor_create (display, server);
   weston_compositor_set_xkb_rule_names (server->compositor, NULL);
 
 	if (!server->compositor)
@@ -578,7 +578,6 @@ int main (int    argc,
   server->compositor->kb_repeat_rate = 40;
   server->compositor->kb_repeat_delay = 400;
 
-  server->compositor->user_data = server;
 
   wl_list_init (&server->outputs);
 
