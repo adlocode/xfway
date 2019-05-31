@@ -302,6 +302,12 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
   weston_desktop_surface_unlink_view (self->view);
   weston_view_destroy (self->view);
   weston_desktop_surface_set_user_data (desktop_surface, NULL);
+
+  if (self->output_destroy_listener.notify)
+    {
+      wl_list_remove (&self->output_destroy_listener.link);
+      self->output_destroy_listener.notify = NULL;
+    }
   free (self);
 }
 
