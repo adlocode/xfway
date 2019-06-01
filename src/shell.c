@@ -67,6 +67,9 @@ struct _CWindowWayland
   struct weston_output *output;
   struct wl_listener output_destroy_listener;
 
+  struct wlr_foreign_toplevel_handle_v1 *toplevel_handle;
+  struct wl_listener toplevel_handle_request_activate;
+
   bool maximized;
 };
 
@@ -247,6 +250,12 @@ get_shell_surface(struct weston_surface *surface)
 	return NULL;
 }
 
+static void handle_toplevel_handle_request_activate (struct wl_listener *listener,
+                                                     void               *data)
+{
+
+}
+
 void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *user_data)
 {
@@ -273,7 +282,12 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   weston_surface_damage (self->surface);
   weston_compositor_schedule_repaint (server->compositor);
 
-  _weston_window_switcher_window_create (server->window_switcher, self->surface);
+  self->toplevel_handle = wlr_foreign_toplevel_handle_v1_create (server->manager);
+
+  self->toplevel_handle_request_activate.notify =
+    handle_toplevel_handle_request_activate;
+  wl_signal_add (&self->toplevel_handle->events.request_activate,
+                 &self->toplevel_handle_request_activate);
 
   weston_desktop_surface_set_activated (desktop_surface, true);
 
@@ -999,7 +1013,6 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   int ret;
   struct weston_client *client;
   struct wl_event_loop *loop;
-  struct wlr_foreign_toplevel_manager_v1 *manager;
 
   shell = zalloc (sizeof (Shell));
   shell->display_info = server;
@@ -1008,7 +1021,7 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
 
   ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
 
-  manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
+  server->manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,

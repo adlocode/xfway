@@ -29,6 +29,8 @@
 #include <linux/input.h>
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
+#include <protocol/wlr-foreign-toplevel-management-unstable-v1-protocol.h>
+#include "wlr_foreign_toplevel_management_v1.h"
 
 struct weston_window_switcher;
 
@@ -53,6 +55,8 @@ struct _DisplayInfo
   GdkDisplay *gdisplay;
 
   struct weston_window_switcher *window_switcher;
+
+  struct wlr_foreign_toplevel_manager_v1 *manager;
 };
 
 typedef struct _DisplayInfo DisplayInfo;
