@@ -434,24 +434,20 @@ shell_surface_calculate_layer_link (CWindowWayland *cw)
 	return &cw->server->surfaces_layer.view_list;
 }
 
-static void click_to_activate_binding (struct weston_pointer *pointer,
-                                       const struct timespec *time,
-                                       uint32_t               button,
-                                       void                  *data)
+void
+activate (DisplayInfo        *display_info,
+          struct weston_view *view,
+          struct weston_seat *seat,
+          uint32_t            flags)
 {
-  DisplayInfo *server = data;
-  CWindowWayland *cw;
-  struct weston_seat *s;
   struct weston_surface *main_surface;
+  CWindowWayland *cw;
   struct weston_layer_entry *new_layer_link;
 
-  main_surface = weston_surface_get_main_surface (pointer->focus->surface);
+  main_surface = weston_surface_get_main_surface (view->surface);
   cw = get_shell_surface (main_surface);
-
   if (cw == NULL)
     return;
-
-  struct weston_surface *surface = weston_desktop_surface_get_surface (cw->desktop_surface);
 
   new_layer_link = shell_surface_calculate_layer_link (cw);
 
@@ -460,7 +456,7 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
   if (new_layer_link == &cw->view->layer_link)
     return;
 
-      weston_view_activate (pointer->focus, pointer->seat,
+      weston_view_activate (view, seat,
                             WESTON_ACTIVATE_FLAG_CLICKED |
                             WESTON_ACTIVATE_FLAG_CONFIGURE);
       weston_view_geometry_dirty (cw->view);
@@ -469,6 +465,23 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
       weston_view_geometry_dirty (cw->view);
       weston_surface_damage (main_surface);
       weston_desktop_surface_propagate_layer (cw->desktop_surface);
+}
+static void click_to_activate_binding (struct weston_pointer *pointer,
+                                       const struct timespec *time,
+                                       uint32_t               button,
+                                       void                  *data)
+{
+  DisplayInfo *server = data;
+
+  struct weston_surface *main_surface;
+
+
+  main_surface = weston_surface_get_main_surface (pointer->focus->surface);
+  if (!get_shell_surface (main_surface))
+    return;
+
+  activate (server, pointer->focus, pointer->seat, 0);
+
 }
 
 static void
