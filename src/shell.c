@@ -113,6 +113,12 @@ void
 _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
                                        struct weston_surface         *surface);
 
+void
+activate (DisplayInfo        *display_info,
+          struct weston_view *view,
+          struct weston_seat *seat,
+          uint32_t            flags);
+
 struct weston_output *
 get_default_output(struct weston_compositor *compositor)
 {
@@ -253,6 +259,15 @@ get_shell_surface(struct weston_surface *surface)
 static void handle_toplevel_handle_request_activate (struct wl_listener *listener,
                                                      void               *data)
 {
+  CWindowWayland *cw = wl_container_of (listener, cw, toplevel_handle_request_activate);
+
+  struct wlr_foreign_toplevel_handle_v1_activated_event *event = data;
+
+  struct weston_seat *s;
+  wl_list_for_each (s, &cw->server->compositor->seat_list, link)
+    {
+      activate (NULL, cw->view, s, 0);
+    }
 
 }
 

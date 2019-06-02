@@ -108,12 +108,12 @@ static void foreign_toplevel_handle_activate(struct wl_client *client,
 		return;
 	}
 
-	/*struct wlr_seat_client *seat_client = wlr_seat_client_from_resource(seat);
+	//struct wlr_seat_client *seat_client = wlr_seat_client_from_resource(seat);
 	struct wlr_foreign_toplevel_handle_v1_activated_event event = {
 		.toplevel = toplevel,
-		.seat = seat_client->seat,
+		//.seat = seat_client->seat,
 	};
-	wlr_signal_emit_safe(&toplevel->events.request_activate, &event);*/
+	wlr_signal_emit_safe(&toplevel->events.request_activate, &event);
 }
 
 static void foreign_toplevel_handle_close(struct wl_client *client,
