@@ -70,6 +70,8 @@ struct _CWindowWayland
   struct wlr_foreign_toplevel_handle_v1 *toplevel_handle;
   struct wl_listener toplevel_handle_request_activate;
 
+  struct wl_listener desktop_surface_metadata_signal;
+
   bool maximized;
 };
 
@@ -271,6 +273,22 @@ static void handle_toplevel_handle_request_activate (struct wl_listener *listene
 
 }
 
+static void handle_desktop_surface_metadata_signal (struct wl_listener *listener,
+                                                    void               *data)
+{
+  const char *title, *app_id;
+
+  CWindowWayland *cw = wl_container_of (listener, cw, desktop_surface_metadata_signal);
+
+  title = weston_desktop_surface_get_title (cw->desktop_surface);
+  if (title)
+    wlr_foreign_toplevel_handle_v1_set_title (cw->toplevel_handle, title);
+
+  app_id = weston_desktop_surface_get_app_id (cw->desktop_surface);
+  if (app_id)
+    wlr_foreign_toplevel_handle_v1_set_app_id (cw->toplevel_handle, app_id);
+}
+
 void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *user_data)
 {
@@ -303,6 +321,12 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
     handle_toplevel_handle_request_activate;
   wl_signal_add (&self->toplevel_handle->events.request_activate,
                  &self->toplevel_handle_request_activate);
+
+  self->desktop_surface_metadata_signal.notify = handle_desktop_surface_metadata_signal;
+  weston_desktop_surface_add_metadata_listener (desktop_surface,
+                                                &self->desktop_surface_metadata_signal);
+
+
 
   weston_desktop_surface_set_activated (desktop_surface, true);
 
@@ -392,6 +416,7 @@ static void
 map(DisplayInfo *shell, CWindowWayland *cw,
     int32_t sx, int32_t sy)
 {
+  const char *title, *app_id;
   struct weston_surface *surface = weston_desktop_surface_get_surface (cw->desktop_surface);
   if (cw->maximized)
     set_maximized_position (cw);
@@ -406,6 +431,13 @@ map(DisplayInfo *shell, CWindowWayland *cw,
       surface->output = cw->output;
       weston_view_set_output (cw->view, cw->output);
     }
+
+  title = weston_desktop_surface_get_title (cw->desktop_surface);
+  app_id = weston_desktop_surface_get_app_id (cw->desktop_surface);
+  if (title)
+    wlr_foreign_toplevel_handle_v1_set_title (cw->toplevel_handle, title);
+  if (app_id)
+    wlr_foreign_toplevel_handle_v1_set_app_id (cw->toplevel_handle, app_id);
 
 }
 
