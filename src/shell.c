@@ -330,6 +330,12 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
 
   wl_signal_emit (&self->destroy_signal, self);
 
+  if (self->toplevel_handle)
+    {
+      wlr_foreign_toplevel_handle_v1_destroy (self->toplevel_handle);
+      self->toplevel_handle = NULL;
+    }
+
   weston_desktop_surface_unlink_view (self->view);
   weston_view_destroy (self->view);
   weston_desktop_surface_set_user_data (desktop_surface, NULL);
