@@ -69,6 +69,7 @@ struct _CWindowWayland
 
   struct wlr_foreign_toplevel_handle_v1 *toplevel_handle;
   struct wl_listener toplevel_handle_request_activate;
+  struct wl_listener toplevel_handle_request_close;
 
   struct wl_listener desktop_surface_metadata_signal;
 
@@ -273,6 +274,14 @@ static void handle_toplevel_handle_request_activate (struct wl_listener *listene
 
 }
 
+static void handle_toplevel_handle_request_close (struct wl_listener *listener,
+                                                  void               *data)
+{
+  CWindowWayland *cw = wl_container_of (listener, cw, toplevel_handle_request_close);
+
+  weston_desktop_surface_close (cw->desktop_surface);
+}
+
 static void handle_desktop_surface_metadata_signal (struct wl_listener *listener,
                                                     void               *data)
 {
@@ -321,6 +330,10 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
     handle_toplevel_handle_request_activate;
   wl_signal_add (&self->toplevel_handle->events.request_activate,
                  &self->toplevel_handle_request_activate);
+  self->toplevel_handle_request_close.notify =
+    handle_toplevel_handle_request_close;
+  wl_signal_add (&self->toplevel_handle->events.request_close,
+                 &self->toplevel_handle_request_close);
 
   self->desktop_surface_metadata_signal.notify = handle_desktop_surface_metadata_signal;
   weston_desktop_surface_add_metadata_listener (desktop_surface,
