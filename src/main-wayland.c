@@ -338,6 +338,23 @@ void background_create (DisplayInfo *server, Output *o)
 static struct wl_list child_process_list;
 static struct weston_compositor *segv_compositor;
 
+WL_EXPORT char *
+wet_get_binary_path(const char *name)
+{
+	char path[PATH_MAX];
+	size_t len;
+
+	len = weston_module_path_from_env(name, path, sizeof path);
+	if (len > 0)
+		return strdup(path);
+
+	len = snprintf(path, sizeof path, "%s/%s", BINDIR, name);
+	if (len >= sizeof path)
+		return NULL;
+
+	return strdup(path);
+}
+
 static int
 sigchld_handler(int signal_number, void *data)
 {

@@ -42,6 +42,9 @@ struct weston_process {
 	struct wl_list link;
 };
 
+WL_EXPORT char *
+wet_get_binary_path(const char *name);
+
 struct wl_client *
 weston_client_launch(struct weston_compositor *compositor,
 		     struct weston_process *proc,

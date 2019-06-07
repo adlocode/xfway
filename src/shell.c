@@ -1056,10 +1056,12 @@ static void
 launch_desktop_shell_process(void *data)
 {
 	Shell *shell = data;
-  struct wl_client *client;
+  char *client;
   DisplayInfo *display_info = shell->display_info;
 
-  shell->child.client = weston_client_start (display_info->compositor, "src/xfway-shell");
+  client = wet_get_binary_path ("xfway-shell");
+
+  shell->child.client = weston_client_start (display_info->compositor, client);
 
 	if (!shell->child.client) {
 		weston_log("not able to start client");

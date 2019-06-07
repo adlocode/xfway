@@ -1,5 +1,9 @@
 bin_PROGRAMS = xfway xfway-shell
 
+AM_CPPFLAGS = 					\
+	-DBINDIR='"$(bindir)"'			\
+	-DLIBEXECDIR='"$(libexecdir)"'		
+
 xfway_SOURCES = \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.c \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.h \
