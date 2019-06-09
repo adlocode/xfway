@@ -82,6 +82,8 @@ struct _Shell
 {
   DisplayInfo *display_info;
 
+  struct wlr_foreign_toplevel_manager_v1 *manager;
+
   struct {
 		struct wl_client *client;
 		struct wl_resource *desktop_shell;
@@ -301,14 +303,15 @@ static void handle_desktop_surface_metadata_signal (struct wl_listener *listener
 void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *user_data)
 {
-  DisplayInfo *server = user_data;
+  Shell *shell = user_data;
+  DisplayInfo *display_info = shell->display_info;
 
   CWindowWayland *self;
 
   self = calloc (1, sizeof (CWindowWayland));
 
   self->desktop_surface = desktop_surface;
-  self->server = server;
+  self->server = display_info;
 
   self->saved_position_valid = false;
 
@@ -319,12 +322,12 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   self->surface = weston_desktop_surface_get_surface (self->desktop_surface);
   self->view = weston_desktop_surface_create_view (self->desktop_surface);
 
-  weston_layer_entry_insert (&server->surfaces_layer.view_list, &self->view->layer_link);
+  weston_layer_entry_insert (&display_info->surfaces_layer.view_list, &self->view->layer_link);
 
   weston_surface_damage (self->surface);
-  weston_compositor_schedule_repaint (server->compositor);
+  weston_compositor_schedule_repaint (display_info->compositor);
 
-  self->toplevel_handle = wlr_foreign_toplevel_handle_v1_create (server->manager);
+  self->toplevel_handle = wlr_foreign_toplevel_handle_v1_create (shell->manager);
 
   self->toplevel_handle_request_activate.notify =
     handle_toplevel_handle_request_activate;
@@ -344,7 +347,7 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   weston_desktop_surface_set_activated (desktop_surface, true);
 
   struct weston_seat *s;
-  wl_list_for_each (s, &server->compositor->seat_list, link)
+  wl_list_for_each (s, &display_info->compositor->seat_list, link)
     {
       weston_view_activate (self->view, s,
                             WESTON_ACTIVATE_FLAG_CLICKED |
@@ -358,7 +361,8 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 void surface_removed (struct weston_desktop_surface *desktop_surface,
                       void                   *user_data)
 {
-  DisplayInfo *server = user_data;
+  Shell *shell = user_data;
+  DisplayInfo *server = shell->display_info;
 
   CWindowWayland *self = weston_desktop_surface_get_user_data (desktop_surface);
 
@@ -463,7 +467,8 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 	struct weston_surface *surface =
 		weston_desktop_surface_get_surface(desktop_surface);
 	struct weston_view *view = cw->view;
-	DisplayInfo *shell = data;
+	Shell *shell = data;
+  DisplayInfo *display_info = shell->display_info;
 	bool was_fullscreen;
 	bool was_maximized;
 
@@ -477,7 +482,7 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 
 	if (!weston_surface_is_mapped(surface))
     {
-      map(shell, cw, sx, sy);
+      map(display_info, cw, sx, sy);
       surface->is_mapped = true;
     }
 
@@ -713,7 +718,7 @@ desktop_surface_move (struct weston_desktop_surface *desktop_surface,
                       void                          *data)
 {
   struct weston_pointer *pointer = weston_seat_get_pointer (seat);
-  DisplayInfo *server = data;
+  Shell *shell = data;
   CWindowWayland *cw = weston_desktop_surface_get_user_data (desktop_surface);
   struct ShellMoveGrab *move;
   int x, y, dx, dy;
@@ -842,8 +847,10 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
                         struct weston_seat               *seat,
                         uint32_t                          serial,
                         enum weston_desktop_surface_edge  edges,
-                        void                             *server)
+                        void                             *data)
 {
+  Shell *shell = data;
+  DisplayInfo *server = shell->display_info;
   struct weston_pointer *pointer = weston_seat_get_pointer(seat);
 	CWindowWayland *cw =
 		weston_desktop_surface_get_user_data(desktop_surface);
@@ -967,7 +974,7 @@ set_maximized (CWindowWayland *cw,
 static void
 desktop_surface_maximized_requested (struct weston_desktop_surface *desktop_surface,
                                      bool                           maximized,
-                                     void                          *server)
+                                     void                          *data)
 {
   CWindowWayland *shsurf =
           weston_desktop_surface_get_user_data (desktop_surface);
@@ -1085,11 +1092,11 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   shell = zalloc (sizeof (Shell));
   shell->display_info = server;
 
-  desktop = weston_desktop_create (server->compositor, &desktop_api, server);
+  desktop = weston_desktop_create (server->compositor, &desktop_api, shell);
 
   ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
 
-  server->manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
+  shell->manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,

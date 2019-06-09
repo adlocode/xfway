@@ -56,7 +56,6 @@ struct _DisplayInfo
 
   struct weston_window_switcher *window_switcher;
 
-  struct wlr_foreign_toplevel_manager_v1 *manager;
 };
 
 typedef struct _DisplayInfo DisplayInfo;
