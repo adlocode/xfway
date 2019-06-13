@@ -49,11 +49,21 @@ $(GTK_LIBS)
 xfway_shell_SOURCES = \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.c \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.h \
+$(top_srcdir)/protocol/wlr-foreign-toplevel-management-unstable-v1-protocol.c \
+$(top_srcdir)/protocol/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h \
+screen.c \
+screen.h \
+client.c \
+client.h \
+$(top_srcdir)/util/libgwater-wayland.c \
+$(top_srcdir)/util/libgwater-wayland.h \
 main-shell-client.c
 
 xfway_shell_CFLAGS = \
-$(WAYLAND_CLIENT_CFLAGS)
+$(WAYLAND_CLIENT_CFLAGS) \
+$(GTK_CFLAGS)
 
 xfway_shell_LDADD = \
-$(WAYLAND_CLIENT_LIBS)
+$(WAYLAND_CLIENT_LIBS) \
+$(GTK_LIBS)
 
