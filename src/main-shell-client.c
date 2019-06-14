@@ -25,7 +25,6 @@
 
 struct wl_display *display = NULL;
 static struct wl_registry *registry = NULL;
-static struct zwlr_foreign_toplevel_manager_v1 *toplevel_manager = NULL;
 
 static void toplevel_handle_title(void *data,
 		struct zwlr_foreign_toplevel_handle_v1 *zwlr_toplevel,
@@ -107,6 +106,7 @@ void global_add (void               *data,
                  const char         *interface,
                  uint32_t            version)
 {
+  ScreenInfo *screen_info = data;
 
   if (strcmp (interface, "xfway_shell") == 0)
     {
@@ -115,11 +115,11 @@ void global_add (void               *data,
     }
   else if (strcmp(interface,
 			"zwlr_foreign_toplevel_manager_v1") == 0) {
-		toplevel_manager = wl_registry_bind(registry, name,
+		screen_info->toplevel_manager = wl_registry_bind(registry, name,
 				&zwlr_foreign_toplevel_manager_v1_interface,
 				2);
 
-    zwlr_foreign_toplevel_manager_v1_add_listener(toplevel_manager,
+    zwlr_foreign_toplevel_manager_v1_add_listener(screen_info->toplevel_manager,
 				&toplevel_manager_impl, NULL);
       }
 }

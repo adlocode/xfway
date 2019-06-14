@@ -25,10 +25,13 @@
 #define INC_SCREEN_H
 
 #include <gtk/gtk.h>
+#include <protocol/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h>
 
 struct _ScreenInfo
 {
   GdkScreen *gscr;
+
+  struct zwlr_foreign_toplevel_manager_v1 *toplevel_manager;
 };
 
 typedef struct _ScreenInfo ScreenInfo;
