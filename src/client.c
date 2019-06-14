@@ -59,6 +59,8 @@ clientFrame (ScreenInfo *screen_info,
     c->toplevel_handle = toplevel_handle;
     c->screen_info = screen_info;
 
+    c->name = NULL;
+
     return c;
 }
 

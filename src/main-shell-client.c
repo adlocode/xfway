@@ -87,10 +87,6 @@ static void toplevel_manager_handle_toplevel(void *data,
 
   c = clientFrame (screen_info, zwlr_toplevel, FALSE);
 
-  c->toplevel_handle = zwlr_toplevel;
-
-  c->name = NULL;
-
   zwlr_foreign_toplevel_handle_v1_add_listener (zwlr_toplevel, &toplevel_impl,
                                                 c);
 }
