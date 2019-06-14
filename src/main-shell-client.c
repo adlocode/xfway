@@ -31,7 +31,10 @@ static void toplevel_handle_title(void *data,
 		struct zwlr_foreign_toplevel_handle_v1 *zwlr_toplevel,
 		const char *title)
 {
-
+  Client *c = data;
+  if (c->name)
+    g_free (c->name);
+  c->name = g_strdup (title);
 }
 
 static void toplevel_handle_app_id(void *data,
@@ -59,6 +62,9 @@ static void toplevel_handle_closed(void *data,
 {
   Client *c = data;
 
+  if (c->name)
+    g_free (c->name);
+
   clientUnframe (c, FALSE);
 }
 
@@ -82,6 +88,8 @@ static void toplevel_manager_handle_toplevel(void *data,
   c = clientFrame (screen_info, zwlr_toplevel, FALSE);
 
   c->toplevel_handle = zwlr_toplevel;
+
+  c->name = NULL;
 
   zwlr_foreign_toplevel_handle_v1_add_listener (zwlr_toplevel, &toplevel_impl,
                                                 c);

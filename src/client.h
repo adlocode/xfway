@@ -266,6 +266,8 @@ struct _Client
     ScreenInfo *screen_info;
 
     struct zwlr_foreign_toplevel_handle_v1 *toplevel_handle;
+
+    gchar *name;
 };
 
 typedef struct _Client Client;
