@@ -62,8 +62,16 @@ clientFrame (ScreenInfo *screen_info,
     return c;
 }
 
+static void
+clientFree (Client *c)
+{
+    g_return_if_fail (c != NULL);
+
+    g_free (c);
+}
+
 void
 clientUnframe (Client *c, gboolean remap)
 {
-
+  clientFree (c);
 }

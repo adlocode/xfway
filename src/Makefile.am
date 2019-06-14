@@ -18,6 +18,7 @@ wlr_foreign_toplevel_management_v1.c \
 wlr_foreign_toplevel_management_v1.h \
 os-compatibility.c \
 os-compatibility.h \
+$(top_srcdir)/util/helpers.h \
 xfway.h \
 window-switcher.c \
 shell.c \
@@ -57,6 +58,7 @@ client.c \
 client.h \
 $(top_srcdir)/util/libgwater-wayland.c \
 $(top_srcdir)/util/libgwater-wayland.h \
+$(top_srcdir)/util/helpers.h \
 main-shell-client.c
 
 xfway_shell_CFLAGS = \

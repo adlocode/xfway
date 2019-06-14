@@ -20,34 +20,7 @@
 #include <protocol/window-switcher-unstable-v1-server-protocol.h>
 #include <protocol/wlr-foreign-toplevel-management-unstable-v1-protocol.h>
 #include "wlr_foreign_toplevel_management_v1.h"
-
-/**
- * Returns the smaller of two values.
- *
- * @param x the first item to compare.
- * @param y the second item to compare.
- * @return the value that evaluates to lesser than the other.
- */
-#ifndef MIN
-#define MIN(x,y) (((x) < (y)) ? (x) : (y))
-#endif
-
-/**
- * Returns the bigger of two values.
- *
- * @param x the first item to compare.
- * @param y the second item to compare.
- * @return the value that evaluates to more than the other.
- */
-#ifndef MAX
-#define MAX(x,y) (((x) > (y)) ? (x) : (y))
-#endif
-
-#ifndef container_of
-#define container_of(ptr, type, member) ({				\
-	const __typeof__( ((type *)0)->member ) *__mptr = (ptr);	\
-	(type *)( (char *)__mptr - offsetof(type,member) );})
-#endif
+#include <util/helpers.h>
 
 struct _CWindowWayland
 {
