@@ -528,7 +528,7 @@ focus_state_destroy(struct focus_state *state)
 {
 	wl_list_remove(&state->seat_destroy_listener.link);
 	wl_list_remove(&state->surface_destroy_listener.link);
-	free(state);weston_log ("focus state destroy\n");
+	free(state);
 }
 
 static void
@@ -579,7 +579,7 @@ focus_state_create(Shell *shell, struct weston_seat *seat)
 	state = malloc(sizeof *state);
 	if (state == NULL)
 		return NULL;
-weston_log ("focus state create\n");
+
 	state->shell = shell;
 	state->keyboard_focus = NULL;
 	//state->ws = ws;
@@ -650,7 +650,6 @@ activate (Shell *shell,
       prev_cw = get_shell_surface (state->keyboard_focus);
       if (prev_cw->toplevel_handle);
           wlr_foreign_toplevel_handle_v1_set_activated (prev_cw->toplevel_handle, 0);
-      weston_log ("deactivate\n");
     }
     }
 
