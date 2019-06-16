@@ -22,6 +22,27 @@
 #include "wlr_foreign_toplevel_management_v1.h"
 #include <util/helpers.h>
 
+struct _Shell
+{
+  DisplayInfo *display_info;
+
+  struct wlr_foreign_toplevel_manager_v1 *manager;
+
+  struct wl_list focus_list;
+
+  struct {
+		struct wl_client *client;
+		struct wl_resource *desktop_shell;
+		struct wl_listener client_destroy_listener;
+
+		unsigned deathcount;
+		struct timespec deathstamp;
+	} child;
+};
+
+typedef struct _Shell Shell;
+
+
 struct _CWindowWayland
 {
   struct wl_signal destroy_signal;
@@ -34,6 +55,8 @@ struct _CWindowWayland
   int grabbed;
 
   uint32_t resize_edges;
+
+  Shell *shell;
 
   DisplayInfo *server;
 
@@ -51,23 +74,16 @@ struct _CWindowWayland
 
 typedef struct _CWindowWayland CWindowWayland;
 
-struct _Shell
-{
-  DisplayInfo *display_info;
 
-  struct wlr_foreign_toplevel_manager_v1 *manager;
-
-  struct {
-		struct wl_client *client;
-		struct wl_resource *desktop_shell;
-		struct wl_listener client_destroy_listener;
-
-		unsigned deathcount;
-		struct timespec deathstamp;
-	} child;
+struct focus_state {
+	Shell *shell;
+	struct weston_seat *seat;
+	//struct workspace *ws;
+	struct weston_surface *keyboard_focus;
+	struct wl_list link;
+	struct wl_listener seat_destroy_listener;
+	struct wl_listener surface_destroy_listener;
 };
-
-typedef struct _Shell Shell;
 
 struct ShellGrab
 {
@@ -92,7 +108,7 @@ _weston_window_switcher_window_create (struct weston_window_switcher *switcher,
                                        struct weston_surface         *surface);
 
 void
-activate (DisplayInfo        *display_info,
+activate (Shell *shell,
           struct weston_view *view,
           struct weston_seat *seat,
           uint32_t            flags);
@@ -285,6 +301,7 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
 
   self->desktop_surface = desktop_surface;
   self->server = display_info;
+  self->shell = shell;
 
   self->saved_position_valid = false;
 
@@ -322,10 +339,9 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   struct weston_seat *s;
   wl_list_for_each (s, &display_info->compositor->seat_list, link)
     {
-      weston_view_activate (self->view, s,
-                            WESTON_ACTIVATE_FLAG_CLICKED |
-                            WESTON_ACTIVATE_FLAG_CONFIGURE);
-
+      activate (shell, self->view, s,
+                WESTON_ACTIVATE_FLAG_CLICKED |
+                WESTON_ACTIVATE_FLAG_CONFIGURE);
     }
 
   wl_signal_init (&self->destroy_signal);
@@ -492,15 +508,120 @@ shell_surface_calculate_layer_link (CWindowWayland *cw)
 	return &cw->server->surfaces_layer.view_list;
 }
 
+static void
+focus_state_set_focus(struct focus_state *state,
+		      struct weston_surface *surface)
+{
+  if (state->keyboard_focus) {
+		wl_list_remove(&state->surface_destroy_listener.link);
+		wl_list_init(&state->surface_destroy_listener.link);
+	}
+
+	state->keyboard_focus = surface;
+	if (surface)
+		wl_signal_add(&surface->destroy_signal,
+			      &state->surface_destroy_listener);
+}
+
+static void
+focus_state_destroy(struct focus_state *state)
+{
+	wl_list_remove(&state->seat_destroy_listener.link);
+	wl_list_remove(&state->surface_destroy_listener.link);
+	free(state);weston_log ("focus state destroy\n");
+}
+
+static void
+focus_state_seat_destroy(struct wl_listener *listener, void *data)
+{
+	struct focus_state *state = container_of(listener,
+						 struct focus_state,
+						 seat_destroy_listener);
+
+	wl_list_remove(&state->link);
+	focus_state_destroy(state);
+}
+
+static void
+focus_state_surface_destroy(struct wl_listener *listener, void *data)
+{
+	struct focus_state *state = container_of(listener,
+						 struct focus_state,
+						 surface_destroy_listener);
+	struct weston_surface *main_surface;
+	struct weston_view *next;
+	struct weston_view *view;
+
+	main_surface = weston_surface_get_main_surface(state->keyboard_focus);
+
+	next = NULL;
+
+
+	/* if the focus was a sub-surface, activate its main surface */
+	//if (main_surface != state->keyboard_focus)
+		//next = get_default_view(main_surface);
+
+	if (next) {
+
+	} else {
+
+
+		wl_list_remove(&state->link);
+		focus_state_destroy(state);
+	}
+}
+
+static struct focus_state *
+focus_state_create(Shell *shell, struct weston_seat *seat)
+{
+	struct focus_state *state;
+
+	state = malloc(sizeof *state);
+	if (state == NULL)
+		return NULL;
+weston_log ("focus state create\n");
+	state->shell = shell;
+	state->keyboard_focus = NULL;
+	//state->ws = ws;
+	state->seat = seat;
+	wl_list_insert(&shell->focus_list, &state->link);
+
+	state->seat_destroy_listener.notify = focus_state_seat_destroy;
+	state->surface_destroy_listener.notify = focus_state_surface_destroy;
+	wl_signal_add(&seat->destroy_signal,
+		      &state->seat_destroy_listener);
+	wl_list_init(&state->surface_destroy_listener.link);
+
+	return state;
+}
+
+static struct focus_state *
+ensure_focus_state (Shell *shell, struct weston_seat *seat)
+{
+	//struct workspace *ws = get_current_workspace(shell);
+	struct focus_state *state;
+
+	wl_list_for_each(state, &shell->focus_list, link)
+		if (state->seat == seat)
+			break;
+
+	if (&state->link == &shell->focus_list)
+		state = focus_state_create(shell, seat);
+
+	return state;
+}
+
 void
-activate (DisplayInfo        *display_info,
+activate (Shell *shell,
           struct weston_view *view,
           struct weston_seat *seat,
           uint32_t            flags)
 {
   struct weston_surface *main_surface;
-  CWindowWayland *cw;
+  CWindowWayland *cw, *prev_cw;
   struct weston_layer_entry *new_layer_link;
+  struct focus_state *state;
+  struct weston_surface *old_es;
 
   main_surface = weston_surface_get_main_surface (view->surface);
   cw = get_shell_surface (main_surface);
@@ -517,6 +638,27 @@ activate (DisplayInfo        *display_info,
       weston_view_activate (view, seat,
                             WESTON_ACTIVATE_FLAG_CLICKED |
                             WESTON_ACTIVATE_FLAG_CONFIGURE);
+
+      state = ensure_focus_state (shell, seat);
+      if (state == NULL)
+        return;
+
+      if (state->keyboard_focus)
+    {
+      if (state->keyboard_focus != view->surface)
+        {
+      prev_cw = get_shell_surface (state->keyboard_focus);
+      if (prev_cw->toplevel_handle);
+          wlr_foreign_toplevel_handle_v1_set_activated (prev_cw->toplevel_handle, 0);
+      weston_log ("deactivate\n");
+    }
+    }
+
+    focus_state_set_focus (state, view->surface);
+
+    if (cw->toplevel_handle)
+          wlr_foreign_toplevel_handle_v1_set_activated (cw->toplevel_handle, 1);
+
       weston_view_geometry_dirty (cw->view);
       weston_layer_entry_remove (&cw->view->layer_link);
       weston_layer_entry_insert (new_layer_link, &cw->view->layer_link);
@@ -529,16 +671,19 @@ static void click_to_activate_binding (struct weston_pointer *pointer,
                                        uint32_t               button,
                                        void                  *data)
 {
-  DisplayInfo *server = data;
+  Shell *shell = data;
 
   struct weston_surface *main_surface;
+
+  if (pointer->focus == NULL)
+    return;
 
 
   main_surface = weston_surface_get_main_surface (pointer->focus->surface);
   if (!get_shell_surface (main_surface))
     return;
 
-  activate (server, pointer->focus, pointer->seat, 0);
+  activate (shell, pointer->focus, pointer->seat, 0);
 
 }
 
@@ -1065,6 +1210,8 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   shell = zalloc (sizeof (Shell));
   shell->display_info = server;
 
+  wl_list_init (&shell->focus_list);
+
   desktop = weston_desktop_create (server->compositor, &desktop_api, shell);
 
   ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
@@ -1083,8 +1230,8 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
 
   weston_compositor_add_button_binding (server->compositor, BTN_LEFT, 0,
                                         click_to_activate_binding,
-                                        server);
+                                        shell);
   weston_compositor_add_button_binding (server->compositor, BTN_RIGHT, 0,
                                         click_to_activate_binding,
-                                        server);
+                                        shell);
 }
