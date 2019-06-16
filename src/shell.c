@@ -650,13 +650,12 @@ activate (Shell *shell,
       prev_cw = get_shell_surface (state->keyboard_focus);
       if (prev_cw->toplevel_handle);
           wlr_foreign_toplevel_handle_v1_set_activated (prev_cw->toplevel_handle, 0);
+      if (cw->toplevel_handle)
+          wlr_foreign_toplevel_handle_v1_set_activated (cw->toplevel_handle, 1);
     }
     }
 
     focus_state_set_focus (state, view->surface);
-
-    if (cw->toplevel_handle)
-          wlr_foreign_toplevel_handle_v1_set_activated (cw->toplevel_handle, 1);
 
       weston_view_geometry_dirty (cw->view);
       weston_layer_entry_remove (&cw->view->layer_link);
