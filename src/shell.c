@@ -260,7 +260,7 @@ static void handle_toplevel_handle_request_activate (struct wl_listener *listene
   struct weston_seat *s;
   wl_list_for_each (s, &cw->server->compositor->seat_list, link)
     {
-      activate (NULL, cw->view, s, 0);
+      activate (cw->shell, cw->view, s, 0);
     }
 
 }
