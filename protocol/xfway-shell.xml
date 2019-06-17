@@ -7,20 +7,11 @@
       background, panels and locking surfaces.
     </description>
 
-    <event name="server">
-      <description summary="tell client what cursor to show during a grab">
-	This event will be sent immediately before a fake enter event on the
-	grab surface.
-      </description>
-      <arg name="cursor" type="uint"/>
-    </event>
-
-    <request name = "test">
-      <description summary = "test">
-        test
-      </description>
-      <arg name = "text" type = "object" interface = "wl_surface"/>
-    </request>
+  <event name = "tabwin">
+    <description summary = "tell client to create an alt-tab switcher">
+      Tell the client to create an alt-tab switcher.
+    </description>
+  </event>
 
   </interface>
 </protocol>

@@ -1112,10 +1112,21 @@ static const struct weston_desktop_api desktop_api =
 
 };
 
-static const struct xfway_shell_interface xfway_desktop_shell_implementation =
+static void
+tabwin_binding (struct weston_keyboard *keyboard,
+                const struct timespec  *time,
+                uint32_t                key,
+                void                   *data)
 {
-  NULL
-};
+  Shell *shell = data;
+
+  xfway_shell_send_tabwin (shell->child.desktop_shell);
+}
+
+/*static const struct xfway_shell_interface xfway_desktop_shell_implementation =
+{
+
+};*/
 
 static void
 unbind_desktop_shell(struct wl_resource *resource)
@@ -1139,7 +1150,7 @@ bind_desktop_shell(struct wl_client *client,
 
 	if (client == shell->child.client) {
 		wl_resource_set_implementation(resource,
-					       &xfway_desktop_shell_implementation,
+					       NULL,
 					       shell, unbind_desktop_shell);
 		shell->child.desktop_shell = resource;
 		return;
@@ -1232,4 +1243,7 @@ void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
   weston_compositor_add_button_binding (server->compositor, BTN_RIGHT, 0,
                                         click_to_activate_binding,
                                         shell);
+  weston_compositor_add_key_binding (server->compositor, KEY_TAB, MODIFIER_ALT,
+                                     tabwin_binding,
+                                     shell);
 }

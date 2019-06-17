@@ -26,6 +26,15 @@
 struct wl_display *display = NULL;
 static struct wl_registry *registry = NULL;
 
+static void shell_handle_tabwin (void *data, struct xfway_shell *shell)
+{
+
+}
+
+struct xfway_shell_listener shell_impl = {
+  shell_handle_tabwin,
+};
+
 static void toplevel_handle_title(void *data,
 		struct zwlr_foreign_toplevel_handle_v1 *zwlr_toplevel,
 		const char *title)
@@ -112,6 +121,8 @@ void global_add (void               *data,
     {
       struct xfway_shell *shell = NULL;
       shell = wl_registry_bind (registry, name, &xfway_shell_interface, 1);
+
+      xfway_shell_add_listener (shell, &shell_impl, NULL);
     }
   else if (strcmp(interface,
 			"zwlr_foreign_toplevel_manager_v1") == 0) {
