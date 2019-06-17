@@ -24,7 +24,7 @@
 
 struct _Shell
 {
-  DisplayInfo *display_info;
+  xfwmDisplay *xfwm_display;
 
   struct wlr_foreign_toplevel_manager_v1 *manager;
 
@@ -58,7 +58,7 @@ struct _CWindowWayland
 
   Shell *shell;
 
-  DisplayInfo *server;
+  xfwmDisplay *server;
 
   struct weston_output *output;
   struct wl_listener output_destroy_listener;
@@ -165,7 +165,7 @@ shell_surface_set_output(CWindowWayland *cw,
 
 static void
 weston_view_set_initial_position(struct weston_view *view,
-				 DisplayInfo *shell)
+				 xfwmDisplay *shell)
 {
 	struct weston_compositor *compositor = shell->compositor;
 	int ix = 0, iy = 0;
@@ -293,14 +293,14 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
                     void                   *user_data)
 {
   Shell *shell = user_data;
-  DisplayInfo *display_info = shell->display_info;
+  xfwmDisplay *xfwm_display = shell->xfwm_display;
 
   CWindowWayland *self;
 
   self = calloc (1, sizeof (CWindowWayland));
 
   self->desktop_surface = desktop_surface;
-  self->server = display_info;
+  self->server = xfwm_display;
   self->shell = shell;
 
   self->saved_position_valid = false;
@@ -312,10 +312,10 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   self->surface = weston_desktop_surface_get_surface (self->desktop_surface);
   self->view = weston_desktop_surface_create_view (self->desktop_surface);
 
-  weston_layer_entry_insert (&display_info->surfaces_layer.view_list, &self->view->layer_link);
+  weston_layer_entry_insert (&xfwm_display->surfaces_layer.view_list, &self->view->layer_link);
 
   weston_surface_damage (self->surface);
-  weston_compositor_schedule_repaint (display_info->compositor);
+  weston_compositor_schedule_repaint (xfwm_display->compositor);
 
   self->toplevel_handle = wlr_foreign_toplevel_handle_v1_create (shell->manager);
 
@@ -337,7 +337,7 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   weston_desktop_surface_set_activated (desktop_surface, true);
 
   struct weston_seat *s;
-  wl_list_for_each (s, &display_info->compositor->seat_list, link)
+  wl_list_for_each (s, &xfwm_display->compositor->seat_list, link)
     {
       activate (shell, self->view, s,
                 WESTON_ACTIVATE_FLAG_CLICKED |
@@ -351,7 +351,7 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
                       void                   *user_data)
 {
   Shell *shell = user_data;
-  DisplayInfo *server = shell->display_info;
+  xfwmDisplay *server = shell->xfwm_display;
 
   CWindowWayland *self = weston_desktop_surface_get_user_data (desktop_surface);
 
@@ -379,7 +379,7 @@ void surface_removed (struct weston_desktop_surface *desktop_surface,
 }
 
 static void
-get_output_work_area(DisplayInfo *shell,
+get_output_work_area(xfwmDisplay *shell,
 		     struct weston_output *output,
 		     pixman_rectangle32_t *area)
 {
@@ -419,7 +419,7 @@ set_maximized_position (CWindowWayland *cw)
 }
 
 static void
-map(DisplayInfo *shell, CWindowWayland *cw,
+map(xfwmDisplay *shell, CWindowWayland *cw,
     int32_t sx, int32_t sy)
 {
   const char *title, *app_id;
@@ -457,7 +457,7 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 		weston_desktop_surface_get_surface(desktop_surface);
 	struct weston_view *view = cw->view;
 	Shell *shell = data;
-  DisplayInfo *display_info = shell->display_info;
+  xfwmDisplay *xfwm_display = shell->xfwm_display;
 	bool was_fullscreen;
 	bool was_maximized;
 
@@ -471,7 +471,7 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
 
 	if (!weston_surface_is_mapped(surface))
     {
-      map(display_info, cw, sx, sy);
+      map(xfwm_display, cw, sx, sy);
       surface->is_mapped = true;
     }
 
@@ -966,7 +966,7 @@ desktop_surface_resize (struct weston_desktop_surface    *desktop_surface,
                         void                             *data)
 {
   Shell *shell = data;
-  DisplayInfo *server = shell->display_info;
+  xfwmDisplay *server = shell->xfwm_display;
   struct weston_pointer *pointer = weston_seat_get_pointer(seat);
 	CWindowWayland *cw =
 		weston_desktop_surface_get_user_data(desktop_surface);
@@ -1052,7 +1052,7 @@ get_focused_output(struct weston_compositor *compositor)
 static void
 get_maximized_size(CWindowWayland *cw, int32_t *width, int32_t *height)
 {
-	DisplayInfo *shell = NULL;
+	xfwmDisplay *shell = NULL;
 	pixman_rectangle32_t area;
 
 	//shell = shell_surface_get_shell(cw);
@@ -1180,11 +1180,11 @@ launch_desktop_shell_process(void *data)
 {
 	Shell *shell = data;
   char *client;
-  DisplayInfo *display_info = shell->display_info;
+  xfwmDisplay *xfwm_display = shell->xfwm_display;
 
   client = wet_get_binary_path ("xfway-shell");
 
-  shell->child.client = weston_client_start (display_info->compositor, client);
+  shell->child.client = weston_client_start (xfwm_display->compositor, client);
 
 	if (!shell->child.client) {
 		weston_log("not able to start client");
@@ -1197,7 +1197,7 @@ launch_desktop_shell_process(void *data)
 				       &shell->child.client_destroy_listener);
 }
 
-void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
+void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
 {
   Shell *shell;
   struct weston_desktop *desktop;
@@ -1206,7 +1206,7 @@ void xfway_server_shell_init (DisplayInfo *server, int argc, char *argv[])
   struct wl_event_loop *loop;
 
   shell = zalloc (sizeof (Shell));
-  shell->display_info = server;
+  shell->xfwm_display = server;
 
   wl_list_init (&shell->focus_list);
 

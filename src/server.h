@@ -34,7 +34,7 @@
 
 struct weston_window_switcher;
 
-struct _DisplayInfo
+struct _xfwmDisplay
 {
   struct weston_compositor *compositor;
   struct wl_listener heads_changed_listener;
@@ -58,4 +58,4 @@ struct _DisplayInfo
 
 };
 
-typedef struct _DisplayInfo DisplayInfo;
+typedef struct _xfwmDisplay xfwmDisplay;

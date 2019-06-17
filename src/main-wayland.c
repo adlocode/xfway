@@ -68,7 +68,7 @@ static int vlog_continue (const char *fmt,
 
 static int new_output_notify_drm (struct weston_output *output)
 {
-  DisplayInfo *server = weston_compositor_get_user_data (output->compositor);
+  xfwmDisplay *server = weston_compositor_get_user_data (output->compositor);
 
   server->api.drm->set_mode (output, WESTON_DRM_BACKEND_OUTPUT_PREFERRED, NULL);
   server->api.drm->set_gbm_format (output, NULL);
@@ -146,7 +146,7 @@ xfway_head_tracker_from_head(struct weston_head *head)
 }
 
 static void
-xfway_head_tracker_create(DisplayInfo *display_info,
+xfway_head_tracker_create(xfwmDisplay *display_info,
 			struct weston_head *head)
 {
 	XfwayHeadTracker *track;
@@ -160,7 +160,7 @@ xfway_head_tracker_create(DisplayInfo *display_info,
 }
 
 static void
-simple_head_enable(DisplayInfo *wet, struct weston_head *head)
+simple_head_enable(xfwmDisplay *wet, struct weston_head *head)
 {
 	struct weston_output *output;
 	int ret = 0;
@@ -214,7 +214,7 @@ static void
 simple_heads_changed(struct wl_listener *listener, void *arg)
 {
 	struct weston_compositor *compositor = arg;
-	DisplayInfo *wet = weston_compositor_get_user_data (compositor);
+	xfwmDisplay *wet = weston_compositor_get_user_data (compositor);
 	struct weston_head *head = NULL;
 	bool connected;
 	bool enabled;
@@ -242,7 +242,7 @@ static void
 compositor_set_simple_head_configurator(struct weston_compositor *compositor,
 				 int (*fn)(struct weston_output *))
 {
-	DisplayInfo *wet = weston_compositor_get_user_data (compositor);
+	xfwmDisplay *wet = weston_compositor_get_user_data (compositor);
 
 	wet->simple_output_configure = fn;
 
@@ -254,7 +254,7 @@ compositor_set_simple_head_configurator(struct weston_compositor *compositor,
 static int new_output_notify_wayland (struct weston_output *output)
 {
   //struct weston_output *output = data;
-  DisplayInfo *server = weston_compositor_get_user_data (output->compositor);
+  xfwmDisplay *server = weston_compositor_get_user_data (output->compositor);
 
   weston_output_set_scale (output, 1);
   weston_output_set_transform (output, WL_OUTPUT_TRANSFORM_NORMAL);
@@ -273,7 +273,7 @@ static int new_output_notify_wayland (struct weston_output *output)
 
 }
 
-static int load_drm_backend (DisplayInfo *server, int32_t use_pixman)
+static int load_drm_backend (xfwmDisplay *server, int32_t use_pixman)
 {
   struct weston_drm_backend_config config = {{ 0, }};
   int ret = 0;
@@ -293,7 +293,7 @@ static int load_drm_backend (DisplayInfo *server, int32_t use_pixman)
   return ret;
 }
 
-static int load_wayland_backend (DisplayInfo *server, int32_t use_pixman)
+static int load_wayland_backend (xfwmDisplay *server, int32_t use_pixman)
 {
 
   struct weston_wayland_backend_config config = {{ 0, }};
@@ -321,7 +321,7 @@ static int load_wayland_backend (DisplayInfo *server, int32_t use_pixman)
   return ret;
 }
 
-void background_create (DisplayInfo *server, Output *o)
+void background_create (xfwmDisplay *server, Output *o)
 {
   if (server->background == NULL)
     {
@@ -540,10 +540,10 @@ int main (int    argc,
 	struct weston_compositor *ec = NULL;
 	int ret = 0;
   const char *socket_name = NULL;
-  DisplayInfo *server;
+  xfwmDisplay *server;
   struct weston_output *output;
 
-  server = malloc (sizeof(DisplayInfo));
+  server = malloc (sizeof(xfwmDisplay));
 
   server->background = NULL;
   server->window_switcher = NULL;
