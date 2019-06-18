@@ -13,5 +13,17 @@
     </description>
   </event>
 
+  <event name = "tabwin_next">
+    <description summary = "tell client to select the next window">
+      Tell the client to select the next window in the switcher.
+    </description>
+  </event>
+
+  <event name = "tabwin_destroy">
+    <description summary = "tell client to destroy the alt-tab switcher">
+      Tell the client to destroy the alt-tab switcher.
+    </description>
+  </event>
+
   </interface>
 </protocol>

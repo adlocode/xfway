@@ -1112,6 +1112,161 @@ static const struct weston_desktop_api desktop_api =
 
 };
 
+struct switcher {
+	Shell *shell;
+	struct weston_view *current;
+	struct wl_listener listener;
+	struct weston_keyboard_grab grab;
+	struct wl_array minimized_array;
+};
+
+static void
+switcher_next(struct switcher *switcher)
+{
+	struct weston_view *view;
+	struct weston_view *first = NULL, *prev = NULL, *next = NULL;
+	CWindowWayland *shsurf;
+	//struct workspace *ws = get_current_workspace(switcher->shell);
+
+	 /* temporary re-display minimized surfaces */
+	/*struct weston_view *tmp;
+	struct weston_view **minimized;
+	wl_list_for_each_safe(view, tmp, &switcher->shell->minimized_layer.view_list.link, layer_link.link) {
+		weston_layer_entry_remove(&view->layer_link);
+		weston_layer_entry_insert(&ws->layer.view_list, &view->layer_link);
+		minimized = wl_array_add(&switcher->minimized_array, sizeof *minimized);
+		*minimized = view;
+	}*/
+
+  xfway_shell_send_tabwin_next (switcher->shell->child.desktop_shell);
+
+	wl_list_for_each(view, &switcher->shell->xfwm_display->surfaces_layer.view_list.link, layer_link.link) {
+		shsurf = get_shell_surface(view->surface);
+		if (shsurf) {
+			if (first == NULL)
+				first = view;
+			if (prev == switcher->current)
+				next = view;
+			prev = view;
+			view->alpha = 0.25;
+			weston_view_geometry_dirty(view);
+			weston_surface_damage(view->surface);
+		}
+
+		/*if (is_black_surface_view(view, NULL)) {
+			view->alpha = 0.25;
+			weston_view_geometry_dirty(view);
+			weston_surface_damage(view->surface);
+		}*/
+	}
+
+	if (next == NULL)
+		next = first;
+
+	if (next == NULL)
+		return;
+
+	wl_list_remove(&switcher->listener.link);
+	wl_signal_add(&next->destroy_signal, &switcher->listener);
+
+	switcher->current = next;
+	wl_list_for_each(view, &next->surface->views, surface_link)
+		view->alpha = 1.0;
+
+	shsurf = get_shell_surface(switcher->current->surface);
+	//if (shsurf && weston_desktop_surface_get_fullscreen(shsurf->desktop_surface))
+		//shsurf->fullscreen.black_view->alpha = 1.0;
+}
+
+static void
+switcher_handle_view_destroy(struct wl_listener *listener, void *data)
+{
+	struct switcher *switcher =
+		container_of(listener, struct switcher, listener);
+
+	switcher_next(switcher);
+}
+
+static void
+switcher_destroy(struct switcher *switcher)
+{
+	struct weston_view *view;
+	struct weston_keyboard *keyboard = switcher->grab.keyboard;
+	//struct workspace *ws = get_current_workspace(switcher->shell);
+
+	wl_list_for_each(view, &switcher->shell->xfwm_display->surfaces_layer.view_list.link, layer_link.link) {
+		//if (is_focus_view(view))
+			//continue;
+
+		view->alpha = 1.0;
+		weston_surface_damage(view->surface);
+	}
+
+	if (switcher->current) {
+		activate(switcher->shell, switcher->current,
+			 keyboard->seat,
+			 WESTON_ACTIVATE_FLAG_CONFIGURE);
+	}
+
+	wl_list_remove(&switcher->listener.link);
+	weston_keyboard_end_grab(keyboard);
+	if (keyboard->input_method_resource)
+		keyboard->grab = &keyboard->input_method_grab;
+
+	 /* re-hide surfaces that were temporary shown during the switch */
+	/*struct weston_view **minimized;
+	wl_array_for_each(minimized, &switcher->minimized_array) {
+		/* with the exception of the current selected */
+		/*if ((*minimized)->surface != switcher->current->surface) {
+			weston_layer_entry_remove(&(*minimized)->layer_link);
+			weston_layer_entry_insert(&switcher->shell->minimized_layer.view_list, &(*minimized)->layer_link);
+			weston_view_damage_below(*minimized);
+		}
+	}
+	wl_array_release(&switcher->minimized_array);*/
+
+  xfway_shell_send_tabwin_destroy (switcher->shell->child.desktop_shell);
+
+	free(switcher);
+}
+
+static void
+switcher_key(struct weston_keyboard_grab *grab,
+	     const struct timespec *time, uint32_t key, uint32_t state_w)
+{
+	struct switcher *switcher = container_of(grab, struct switcher, grab);
+	enum wl_keyboard_key_state state = state_w;
+
+	if (key == KEY_TAB && state == WL_KEYBOARD_KEY_STATE_PRESSED)
+		switcher_next(switcher);
+}
+
+static void
+switcher_modifier(struct weston_keyboard_grab *grab, uint32_t serial,
+		  uint32_t mods_depressed, uint32_t mods_latched,
+		  uint32_t mods_locked, uint32_t group)
+{
+	struct switcher *switcher = container_of(grab, struct switcher, grab);
+	struct weston_seat *seat = grab->keyboard->seat;
+
+	if ((seat->modifier_state & MODIFIER_ALT) == 0)
+		switcher_destroy(switcher);
+}
+
+static void
+switcher_cancel(struct weston_keyboard_grab *grab)
+{
+	struct switcher *switcher = container_of(grab, struct switcher, grab);
+
+	switcher_destroy(switcher);
+}
+
+static const struct weston_keyboard_grab_interface switcher_grab = {
+	switcher_key,
+	switcher_modifier,
+	switcher_cancel,
+};
+
 static void
 tabwin_binding (struct weston_keyboard *keyboard,
                 const struct timespec  *time,
@@ -1119,6 +1274,20 @@ tabwin_binding (struct weston_keyboard *keyboard,
                 void                   *data)
 {
   Shell *shell = data;
+	struct switcher *switcher;
+
+	switcher = malloc(sizeof *switcher);
+	switcher->shell = shell;
+	switcher->current = NULL;
+	switcher->listener.notify = switcher_handle_view_destroy;
+	wl_list_init(&switcher->listener.link);
+	wl_array_init(&switcher->minimized_array);
+
+	//lower_fullscreen_layer(switcher->shell, NULL);
+	switcher->grab.interface = &switcher_grab;
+	weston_keyboard_start_grab(keyboard, &switcher->grab);
+	weston_keyboard_set_focus(keyboard, NULL);
+	switcher_next(switcher);
 
   xfway_shell_send_tabwin (shell->child.desktop_shell);
 }

@@ -31,8 +31,20 @@ static void shell_handle_tabwin (void *data, struct xfway_shell *shell)
 
 }
 
+static void shell_handle_tabwin_next (void *data, struct xfway_shell *shell)
+{
+
+}
+
+static void shell_handle_tabwin_destroy (void *data, struct xfway_shell *shell)
+{
+
+}
+
 struct xfway_shell_listener shell_impl = {
   shell_handle_tabwin,
+  shell_handle_tabwin_next,
+  shell_handle_tabwin_destroy,
 };
 
 static void toplevel_handle_title(void *data,
