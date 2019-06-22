@@ -19,7 +19,9 @@
 #include <protocol/xfway-shell-server-protocol.h>
 #include <protocol/window-switcher-unstable-v1-server-protocol.h>
 #include <protocol/wlr-foreign-toplevel-management-unstable-v1-protocol.h>
+#include <protocol/wlr-layer-shell-unstable-v1-protocol.h>
 #include "wlr_foreign_toplevel_management_v1.h"
+#include "wlr_layer_shell_v1.h"
 #include <util/helpers.h>
 
 struct _Shell
@@ -27,6 +29,8 @@ struct _Shell
   xfwmDisplay *xfwm_display;
 
   struct wlr_foreign_toplevel_manager_v1 *manager;
+
+  struct wlr_layer_shell_v1 *layer_shell;
 
   struct wl_list focus_list;
 
@@ -1395,6 +1399,8 @@ void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
   ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
 
   shell->manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
+
+  shell->layer_shell = wlr_layer_shell_v1_create (server->compositor->wl_display);
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,
