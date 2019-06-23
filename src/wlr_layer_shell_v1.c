@@ -182,7 +182,7 @@ static void layer_surface_destroy(struct wlr_layer_surface_v1 *surface) {
 	}
 	wlr_signal_emit_safe(&surface->events.destroy, surface);
 	wl_resource_set_user_data(surface->resource, NULL);
-	//surface->surface->role_data = NULL;
+	surface->surface->role_name = NULL;
 	wl_list_remove(&surface->surface_destroy.link);
 	wl_list_remove(&surface->link);
 	free(surface->namespace);
@@ -336,11 +336,11 @@ static void layer_shell_handle_get_layer_surface(struct wl_client *wl_client,
 		return;
 	}
 
-	/*if (!wlr_surface_set_role(wlr_surface, &layer_surface_role, surface,
-			client_resource, ZWLR_LAYER_SHELL_V1_ERROR_ROLE)) {
+	if (weston_surface_set_role (weston_surface, "zwlr_layer_surface_v1", surface_resource,
+                                ZWLR_LAYER_SHELL_V1_ERROR_ROLE) < 0) {
 		free(surface);
 		return;
-	}*/
+	}
 
 	surface->shell = shell;
 	surface->surface = weston_surface;
@@ -384,8 +384,8 @@ static void layer_shell_handle_get_layer_surface(struct wl_client *wl_client,
 		&surface->surface_destroy);
 	surface->surface_destroy.notify = handle_surface_destroyed;
 
-	//wlr_log(WLR_DEBUG, "new layer_surface %p (res %p)",
-			//surface, surface->resource);
+	weston_log ("new layer_surface %p (res %p)",
+			surface, surface->resource);
 	wl_resource_set_implementation(surface->resource,
 		&layer_surface_implementation, surface, layer_surface_resource_destroy);
 	wl_list_insert(&shell->surfaces, &surface->link);
