@@ -251,12 +251,40 @@ void wlr_layer_surface_v1_close(struct wlr_layer_surface_v1 *surface) {
 	zwlr_layer_surface_v1_send_closed(surface->resource);
 }
 
-/*static void layer_surface_role_commit(struct wlr_surface *wlr_surface) {
+static void layer_surface_role_commit(struct weston_surface *weston_surface,
+                                      int32_t                sx,
+                                      int32_t                sy) {
 	struct wlr_layer_surface_v1 *surface =
-		wlr_layer_surface_v1_from_wlr_surface(wlr_surface);
+		weston_surface->committed_private;
 	if (surface == NULL) {
 		return;
 	}
+
+  if (!weston_view_is_mapped (surface->view))
+      {
+        switch (surface->layer)
+          {
+            break;
+          case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
+            weston_layer_entry_insert (&surface->shell->xfwm_display->background_layer.view_list,
+                                       &surface->view->layer_link);
+            break;
+          case ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM:
+            weston_layer_entry_insert (&surface->shell->xfwm_display->bottom_layer.view_list,
+                                       &surface->view->layer_link);
+            break;
+          case ZWLR_LAYER_SHELL_V1_LAYER_TOP:
+            weston_layer_entry_insert (&surface->shell->xfwm_display->top_layer.view_list,
+                                       &surface->view->layer_link);
+            break;
+          case ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY:
+            weston_layer_entry_insert (&surface->shell->xfwm_display->overlay_layer.view_list,
+                                       &surface->view->layer_link);
+          }
+        surface->view->is_mapped = true;
+      }
+
+  surface->view->output = surface->head;
 
 	if (surface->closed) {
 		// Ignore commits after the compositor has closed it
@@ -274,12 +302,12 @@ void wlr_layer_surface_v1_close(struct wlr_layer_surface_v1 *surface) {
 		surface->acked_configure = NULL;
 	}
 
-	if (wlr_surface_has_buffer(surface->surface) && !surface->configured) {
+	/*if (weston_view_is_mapped (surface->view) && !surface->configured) {
 		wl_resource_post_error(surface->resource,
 			ZWLR_LAYER_SHELL_V1_ERROR_ALREADY_CONSTRUCTED,
 			"layer_surface has never been configured");
 		return;
-	}
+	}*/
 
 	surface->current.anchor = surface->client_pending.anchor;
 	surface->current.exclusive_zone = surface->client_pending.exclusive_zone;
@@ -297,18 +325,19 @@ void wlr_layer_surface_v1_close(struct wlr_layer_surface_v1 *surface) {
 		// have closed the surface
 		assert(surface->output || surface->closed);
 	}
-	if (surface->configured && wlr_surface_has_buffer(surface->surface) &&
+	if (surface->configured && //weston_view_is_mapped (surface->view) &&
 			!surface->mapped) {
 		surface->mapped = true;
 		wlr_signal_emit_safe(&surface->events.map, surface);
+        weston_log ("map\n");
 	}
-	if (surface->configured && !wlr_surface_has_buffer(surface->surface) &&
+	if (surface->configured && !weston_view_is_mapped (surface->view) &&
 			surface->mapped) {
 		layer_surface_unmap(surface);
 	}
 }
 
-static const struct wlr_surface_role layer_surface_role = {
+/*static const struct wlr_surface_role layer_surface_role = {
 	.name = "zwlr_layer_surface_v1",
 	.commit = layer_surface_role_commit,
 };*/
@@ -342,8 +371,22 @@ static void layer_shell_handle_get_layer_surface(struct wl_client *wl_client,
 		return;
 	}
 
-	surface->shell = shell;
+  surface->shell = shell;
 	surface->surface = weston_surface;
+  surface->resource = surface_resource;
+
+  surface->view = weston_view_create (weston_surface);
+
+  if (output_resource != NULL)
+  surface->head = wl_resource_get_user_data (output_resource);
+  else
+    {
+      surface->head = NULL;
+    }
+
+  weston_surface->committed_private = surface;
+  weston_surface->committed = layer_surface_role_commit;
+
 	if (output_resource) {
 		surface->output = wl_resource_get_user_data (surface_resource);
 	}
@@ -429,7 +472,7 @@ static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	wlr_layer_shell_v1_destroy(layer_shell);
 }
 
-struct wlr_layer_shell_v1 *wlr_layer_shell_v1_create(struct wl_display *display) {
+struct wlr_layer_shell_v1 *wlr_layer_shell_v1_create(struct wl_display *display, xfwmDisplay *xfwm_display) {
 	struct wlr_layer_shell_v1 *layer_shell =
 		calloc(1, sizeof(struct wlr_layer_shell_v1));
 	if (!layer_shell) {
@@ -446,6 +489,8 @@ struct wlr_layer_shell_v1 *wlr_layer_shell_v1_create(struct wl_display *display)
 		return NULL;
 	}
 	layer_shell->global = global;
+
+  layer_shell->xfwm_display = xfwm_display;
 
 	wl_signal_init(&layer_shell->events.new_surface);
 	wl_signal_init(&layer_shell->events.destroy);

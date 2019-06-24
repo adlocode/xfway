@@ -1434,7 +1434,7 @@ void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
 
   shell->manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
 
-  shell->layer_shell = wlr_layer_shell_v1_create (server->compositor->wl_display);
+  shell->layer_shell = wlr_layer_shell_v1_create (server->compositor->wl_display, server);
 
   wl_global_create (server->compositor->wl_display,
                     &xfway_shell_interface, 1,

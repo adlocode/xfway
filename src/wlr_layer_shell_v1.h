@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <wayland-server.h>
 #include <compositor.h>
+#include "server.h"
 //#include <wlr/types/wlr_box.h>
 //#include <wlr/types/wlr_surface.h>
 #include <protocol/wlr-layer-shell-unstable-v1-protocol.h>
@@ -32,6 +33,8 @@ struct wlr_layer_shell_v1 {
 	struct wl_global *global;
 	struct wl_list resources; // wl_resource
 	struct wl_list surfaces; // wl_layer_surface
+
+  xfwmDisplay *xfwm_display;
 
 	struct wl_listener display_destroy;
 
@@ -66,7 +69,9 @@ struct wlr_layer_surface_v1_configure {
 struct wlr_layer_surface_v1 {
 	struct wl_list link; // wlr_layer_shell_v1::surfaces
 	struct weston_surface *surface;
+  struct weston_view *view;
 	struct wlr_output *output;
+  struct weston_output *head;
 	struct wl_resource *resource;
 	struct wlr_layer_shell_v1 *shell;
 	struct wl_list popups; // wlr_xdg_popup::link
@@ -98,7 +103,7 @@ struct wlr_layer_surface_v1 {
 	void *data;
 };
 
-struct wlr_layer_shell_v1 *wlr_layer_shell_v1_create(struct wl_display *display);
+struct wlr_layer_shell_v1 *wlr_layer_shell_v1_create(struct wl_display *display, xfwmDisplay *xfwm_display);
 void wlr_layer_shell_v1_destroy(struct wlr_layer_shell_v1 *layer_shell);
 
 /**
