@@ -43,10 +43,14 @@ struct _xfwmDisplay
       const struct weston_drm_output_api *drm;
       const struct weston_windowed_output_api *windowed;
     } api;
+  struct weston_layer plain_background_layer;
   struct weston_layer background_layer;
   struct weston_surface *background;
   struct weston_view *background_view;
+  struct weston_layer bottom_layer;
   struct weston_layer surfaces_layer;
+  struct weston_layer top_layer;
+  struct weston_layer overlay_layer;
 
   struct wl_list outputs;
 

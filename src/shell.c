@@ -127,6 +127,46 @@ get_default_output(struct weston_compositor *compositor)
 			    struct weston_output, link);
 }
 
+static struct weston_layer_entry *
+shell_surface_calculate_layer_link (CWindowWayland *cw)
+{
+	return &cw->server->surfaces_layer.view_list;
+}
+
+static void
+shell_surface_update_child_surface_layers (CWindowWayland *shsurf)
+{
+	weston_desktop_surface_propagate_layer(shsurf->desktop_surface);
+}
+
+/* Update the surface’s layer. Mark both the old and new views as having dirty
+ * geometry to ensure the changes are redrawn.
+ *
+ * If any child surfaces exist and are mapped, ensure they’re in the same layer
+ * as this surface. */
+static void
+shell_surface_update_layer(CWindowWayland *shsurf)
+{
+	struct weston_surface *surface =
+		weston_desktop_surface_get_surface(shsurf->desktop_surface);
+	struct weston_layer_entry *new_layer_link;
+
+	new_layer_link = shell_surface_calculate_layer_link(shsurf);
+
+	if (new_layer_link == NULL)
+		return;
+	if (new_layer_link == &shsurf->view->layer_link)
+		return;
+
+	weston_view_geometry_dirty(shsurf->view);
+	weston_layer_entry_remove(&shsurf->view->layer_link);
+	weston_layer_entry_insert(new_layer_link, &shsurf->view->layer_link);
+	weston_view_geometry_dirty(shsurf->view);
+	weston_surface_damage(surface);
+
+	shell_surface_update_child_surface_layers(shsurf);
+}
+
 static void
 notify_output_destroy(struct wl_listener *listener, void *data)
 {
@@ -316,8 +356,6 @@ void surface_added (struct weston_desktop_surface *desktop_surface,
   self->surface = weston_desktop_surface_get_surface (self->desktop_surface);
   self->view = weston_desktop_surface_create_view (self->desktop_surface);
 
-  weston_layer_entry_insert (&xfwm_display->surfaces_layer.view_list, &self->view->layer_link);
-
   weston_surface_damage (self->surface);
   weston_compositor_schedule_repaint (xfwm_display->compositor);
 
@@ -433,6 +471,8 @@ map(xfwmDisplay *shell, CWindowWayland *cw,
   else
     weston_view_set_initial_position (cw->view, shell);
 
+  shell_surface_update_layer (cw);
+
 	weston_view_update_transform(cw->view);
   cw->view->is_mapped = true;
 
@@ -504,12 +544,6 @@ desktop_surface_committed(struct weston_desktop_surface *desktop_surface,
   cw->last_width = surface->width;
 	cw->last_height = surface->height;
 
-}
-
-static struct weston_layer_entry *
-shell_surface_calculate_layer_link (CWindowWayland *cw)
-{
-	return &cw->server->surfaces_layer.view_list;
 }
 
 static void
@@ -1409,8 +1443,20 @@ void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
   loop = wl_display_get_event_loop(server->compositor->wl_display);
 	wl_event_loop_add_idle(loop, launch_desktop_shell_process, shell);
 
+  weston_layer_init (&server->background_layer, server->compositor);
+  weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
+
+  weston_layer_init (&server->bottom_layer, server->compositor);
+  weston_layer_set_position (&server->bottom_layer, WESTON_LAYER_POSITION_BOTTOM_UI);
+
   weston_layer_init (&server->surfaces_layer, server->compositor);
   weston_layer_set_position (&server->surfaces_layer, WESTON_LAYER_POSITION_NORMAL);
+
+  weston_layer_init (&server->top_layer, server->compositor);
+  weston_layer_set_position (&server->top_layer, WESTON_LAYER_POSITION_FULLSCREEN);
+
+  weston_layer_init (&server->overlay_layer, server->compositor);
+  weston_layer_set_position (&server->overlay_layer, WESTON_LAYER_POSITION_TOP_UI);
 
   weston_compositor_add_button_binding (server->compositor, BTN_LEFT, 0,
                                         click_to_activate_binding,
