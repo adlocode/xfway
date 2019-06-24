@@ -1430,19 +1430,6 @@ void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
 
   desktop = weston_desktop_create (server->compositor, &desktop_api, shell);
 
-  ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
-
-  shell->manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
-
-  shell->layer_shell = wlr_layer_shell_v1_create (server->compositor->wl_display, server);
-
-  wl_global_create (server->compositor->wl_display,
-                    &xfway_shell_interface, 1,
-                    shell, bind_desktop_shell);
-
-  loop = wl_display_get_event_loop(server->compositor->wl_display);
-	wl_event_loop_add_idle(loop, launch_desktop_shell_process, shell);
-
   weston_layer_init (&server->background_layer, server->compositor);
   weston_layer_set_position (&server->background_layer, WESTON_LAYER_POSITION_BACKGROUND);
 
@@ -1457,6 +1444,19 @@ void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
 
   weston_layer_init (&server->overlay_layer, server->compositor);
   weston_layer_set_position (&server->overlay_layer, WESTON_LAYER_POSITION_LOCK);
+
+  ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
+
+  shell->manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
+
+  shell->layer_shell = wlr_layer_shell_v1_create (server->compositor->wl_display, server);
+
+  wl_global_create (server->compositor->wl_display,
+                    &xfway_shell_interface, 1,
+                    shell, bind_desktop_shell);
+
+  loop = wl_display_get_event_loop(server->compositor->wl_display);
+	wl_event_loop_add_idle(loop, launch_desktop_shell_process, shell);
 
   weston_compositor_add_button_binding (server->compositor, BTN_LEFT, 0,
                                         click_to_activate_binding,
