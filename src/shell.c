@@ -1453,10 +1453,10 @@ void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
   weston_layer_set_position (&server->surfaces_layer, WESTON_LAYER_POSITION_NORMAL);
 
   weston_layer_init (&server->top_layer, server->compositor);
-  weston_layer_set_position (&server->top_layer, WESTON_LAYER_POSITION_FULLSCREEN);
+  weston_layer_set_position (&server->top_layer, WESTON_LAYER_POSITION_UI);
 
   weston_layer_init (&server->overlay_layer, server->compositor);
-  weston_layer_set_position (&server->overlay_layer, WESTON_LAYER_POSITION_TOP_UI);
+  weston_layer_set_position (&server->overlay_layer, WESTON_LAYER_POSITION_LOCK);
 
   weston_compositor_add_button_binding (server->compositor, BTN_LEFT, 0,
                                         click_to_activate_binding,
