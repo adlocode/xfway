@@ -284,7 +284,8 @@ static void layer_surface_role_commit(struct weston_surface *weston_surface,
         surface->view->is_mapped = true;
       }
 
-  surface->view->output = surface->head;
+  if (surface->view->output)
+    surface->view->output = surface->head;
 
 	if (surface->closed) {
 		// Ignore commits after the compositor has closed it
