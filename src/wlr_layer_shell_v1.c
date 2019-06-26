@@ -258,6 +258,12 @@ static void layer_surface_destroy(struct wlr_layer_surface_v1 *surface) {
 	surface->surface->role_name = NULL;
 	wl_list_remove(&surface->surface_destroy.link);
 	wl_list_remove(&surface->link);
+  weston_view_damage_below (surface->view);
+  weston_view_destroy (surface->view);
+  weston_surface_unmap (surface->surface);
+  weston_compositor_schedule_repaint (surface->surface->compositor);
+  surface->surface->committed = NULL;
+  surface->surface->committed_private = NULL;
 	free(surface->namespace);
 	free(surface);
 }
