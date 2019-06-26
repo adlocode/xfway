@@ -32,7 +32,7 @@ void position(struct wlr_layer_surface_v1 *surface,
               coords output_size,
               int *out_x, int *out_y) {
 		int32_t w, h, ow, oh, x = 0, y = 0;
-    uint32_t anchor = surface->client_pending.anchor;
+    uint32_t anchor = surface->current.anchor;
 		w = surface_size.width;
     h = surface_size.height;
     ow = output_size.width;
@@ -63,7 +63,7 @@ void next_size(struct wlr_layer_surface_v1 *surface,
                coords old_size, coords output_size,
                int32_t *out_w, int32_t *out_h) {
 		int32_t w, h, ow, oh, rw, rh;
-    uint32_t anchor = surface->client_pending.anchor;
+    uint32_t anchor = surface->current.anchor;
 		w = old_size.width;
     h = old_size.height;
     ow = output_size.width;
