@@ -471,8 +471,6 @@ static void layer_shell_handle_get_layer_surface(struct wl_client *wl_client,
 
   surface->view = weston_view_create (weston_surface);
 
-  surface->anchor = t;
-
   if (output_resource != NULL)
   surface->head = wl_resource_get_user_data (output_resource);
   else
