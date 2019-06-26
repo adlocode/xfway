@@ -79,6 +79,8 @@ struct wlr_layer_surface_v1 {
 	char *namespace;
 	enum zwlr_layer_shell_v1_layer layer;
 
+  enum zwlr_layer_surface_v1_anchor anchor;
+
 	bool added, configured, mapped, closed;
 	uint32_t configure_serial;
 	struct wl_event_source *configure_idle;

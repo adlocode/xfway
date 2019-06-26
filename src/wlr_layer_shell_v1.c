@@ -12,6 +12,79 @@
 #include "util/signal.h"
 #include <protocol/wlr-layer-shell-unstable-v1-protocol.h>
 
+const enum zwlr_layer_shell_v1_layer t = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
+const enum zwlr_layer_shell_v1_layer r = ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+const enum zwlr_layer_shell_v1_layer b = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+const enum zwlr_layer_shell_v1_layer l = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT;
+
+typedef struct
+{
+  int32_t width;
+  int32_t height;
+} coords;
+
+struct lsh_margin {
+	int32_t top, right, bottom, left;
+};
+
+void position(struct wlr_layer_surface_v1 *surface,
+              coords surface_size,
+              coords output_size,
+              int *out_x, int *out_y) {
+		int32_t w, h, ow, oh, x = 0, y = 0;
+    enum zwlr_layer_shell_v1_layer anchor = surface->client_pending.anchor;
+		w = surface_size.width;
+    h = surface_size.height;
+    ow = output_size.width;
+    oh = output_size.height;
+
+		if ((anchor & (t | b)) == (t | b) ||
+		    !(((anchor & t) != 0) || ((anchor & b) != 0))) {  // both or neither
+			y = oh / 2 - h / 2 + surface->current.margin.top / 2 - surface->current.margin.bottom / 2;
+		} else if ((anchor & b) != 0) {
+			y = oh - h - surface->current.margin.bottom;
+		} else if ((anchor & t) != 0) {
+			y = surface->current.margin.top;
+		}
+		if ((anchor & (l | r)) == (l | r) ||
+		    !(((anchor & l) != 0) || ((anchor & r) != 0))) {  // both or neither
+			x = ow / 2 - w / 2 + surface->current.margin.left / 2 - surface->current.margin.right / 2;
+		} else if ((anchor & r) != 0) {
+			x = ow - w - surface->current.margin.right;
+		} else if ((anchor & l) != 0) {
+			x = surface->current.margin.left;
+		}
+
+    *out_x = x;
+    *out_y = y;
+	}
+
+void next_size(struct wlr_layer_surface_v1 *surface,
+               coords old_size, coords output_size,
+               int32_t *out_w, int32_t *out_h) {
+		int32_t w, h, ow, oh, rw, rh;
+    enum zwlr_layer_shell_v1_layer anchor = surface->client_pending.anchor;
+		w = old_size.width;
+    h = old_size.height;
+    ow = output_size.width;
+    oh = output_size.height;
+		//std::tie(rw, rh) = req_size;
+		if (rw > 0) {
+			w = rw;
+		}
+		if (rh > 0) {
+			h = rh;
+		}
+		if ((anchor & (l | r)) == (l | r)) {
+			w = ow - surface->current.margin.left - surface->current.margin.right;
+		}
+		if ((anchor & (t | b)) == (t | b)) {
+			h = oh - surface->current.margin.top - surface->current.margin.bottom;
+		}
+		*out_w = w;
+    *out_h = h;
+	}
+
 static void resource_handle_destroy(struct wl_client *client,
 		struct wl_resource *resource) {
 	wl_resource_destroy(resource);
@@ -286,6 +359,10 @@ static void layer_surface_role_commit(struct weston_surface *weston_surface,
 
   if (surface->view->output)
     surface->view->output = surface->head;
+  if (surface->view->output == NULL)
+    weston_view_update_transform (surface->view);
+  if (surface->view->output == NULL)
+    return;
 
 	if (surface->closed) {
 		// Ignore commits after the compositor has closed it
@@ -317,6 +394,22 @@ static void layer_surface_role_commit(struct weston_surface *weston_surface,
 		surface->client_pending.keyboard_interactive;
 	surface->current.desired_width = surface->client_pending.desired_width;
 	surface->current.desired_height = surface->client_pending.desired_height;
+
+  coords surface_size, output_size;
+  surface_size.width = surface->current.desired_width;
+  surface_size.height = surface->current.desired_height;
+  output_size.width = surface->view->output->width;
+  output_size.height = surface->view->output->height;
+  int32_t x, y, nw, nh;
+  position (surface, surface_size, output_size, &x, &y);
+  weston_view_set_position (surface->view, x + surface->view->output->x, y + surface->view->output->y);
+  next_size (surface, surface_size, output_size, &nw, &nh);
+  if (nw != weston_surface->width || nh != weston_surface->height)
+    zwlr_layer_surface_v1_send_configure (surface->resource, 0, nw, nh);
+
+  weston_view_update_transform (surface->view);
+  weston_surface_damage (weston_surface);
+  weston_compositor_schedule_repaint (weston_surface->compositor);
 
 	if (!surface->added) {
 		surface->added = true;
@@ -377,6 +470,8 @@ static void layer_shell_handle_get_layer_surface(struct wl_client *wl_client,
   surface->resource = surface_resource;
 
   surface->view = weston_view_create (weston_surface);
+
+  surface->anchor = t;
 
   if (output_resource != NULL)
   surface->head = wl_resource_get_user_data (output_resource);
