@@ -60,8 +60,6 @@ struct _xfwmDisplay
 
   GdkDisplay *gdisplay;
 
-  struct weston_window_switcher *window_switcher;
-
 };
 
 typedef struct _xfwmDisplay xfwmDisplay;

@@ -546,7 +546,6 @@ int main (int    argc,
   server = malloc (sizeof(xfwmDisplay));
 
   server->background = NULL;
-  server->window_switcher = NULL;
 
 
    /* pid_t id = fork ();

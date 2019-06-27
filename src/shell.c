@@ -1445,8 +1445,6 @@ void xfway_server_shell_init (xfwmDisplay *server, int argc, char *argv[])
   weston_layer_init (&server->overlay_layer, server->compositor);
   weston_layer_set_position (&server->overlay_layer, WESTON_LAYER_POSITION_LOCK);
 
-  ret = weston_window_switcher_module_init (server->compositor, &server->window_switcher, argc, argv);
-
   shell->manager = wlr_foreign_toplevel_manager_v1_create (server->compositor->wl_display);
 
   shell->layer_shell = wlr_layer_shell_v1_create (server->compositor->wl_display, server);
