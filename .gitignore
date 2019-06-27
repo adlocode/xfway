@@ -23,3 +23,8 @@ tests/test-switcher/test-switcher
 /configure
 /configure.ac
 /libtool
+/ltmain.sh
+/logs
+/missing
+/stamp-h1
+/test-driver
