@@ -16,11 +16,7 @@ tests/test-switcher/test-switcher
 /aclocal.m4
 /autom4te.cache
 /compile
-/config.guess
-/config.h
-/config.log
-/config.status
-/config.sub
+/config.*
 /configure
 /configure.ac
 /depcomp
