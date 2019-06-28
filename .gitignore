@@ -15,6 +15,7 @@ tests/test-switcher/test-switcher
 .libs
 /aclocal.m4
 /autom4te.cache
+/compile
 /config.guess
 /config.h
 /config.log
@@ -22,9 +23,15 @@ tests/test-switcher/test-switcher
 /config.sub
 /configure
 /configure.ac
+/depcomp
+/install-sh
+/intltool-extract.in
+/intltool-merge.in
+/intltool-update.in
 /libtool
 /ltmain.sh
 /logs
+/m4/
 /missing
 /stamp-h1
 /test-driver
