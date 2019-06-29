@@ -51,6 +51,8 @@ typedef struct
 {
   struct weston_output *output;
   struct weston_surface *background;
+  struct weston_view *background_view;
+  struct wl_listener output_destroy_listener;
   struct wl_list link;
 } Output;
 
@@ -64,6 +66,53 @@ static int vlog_continue (const char *fmt,
                           va_list     argp)
 {
   return vfprintf (stderr, fmt, argp);
+}
+
+static void
+wet_output_handle_destroy(struct wl_listener *listener, void *data)
+{
+	Output *output;
+
+	output = wl_container_of(listener, output, output_destroy_listener);
+	//assert(output->output == data);
+
+	output->output = NULL;
+	wl_list_remove(&output->output_destroy_listener.link);
+}
+
+static Output *
+wet_output_from_weston_output(struct weston_output *base)
+{
+	struct wl_listener *lis;
+
+	lis = weston_output_get_destroy_listener(base,
+						 wet_output_handle_destroy);
+	if (!lis)
+		return NULL;
+
+	return container_of(lis, Output, output_destroy_listener);
+}
+
+static void
+wet_output_destroy(Output *output)
+{
+  if (output->background_view)
+    {
+      weston_view_destroy (output->background_view);
+      output->background_view = NULL;
+    }
+
+  if (output->background)
+    {
+      weston_surface_destroy (output->background);
+      output->background = NULL;
+    }
+
+  if (output->output)
+		weston_output_destroy(output->output);
+
+	wl_list_remove(&output->link);
+	free(output);
 }
 
 static int new_output_notify_drm (struct weston_output *output)
@@ -80,8 +129,12 @@ static int new_output_notify_drm (struct weston_output *output)
   c_output = malloc (sizeof(Output));
   c_output->output = NULL;
   c_output->background = NULL;
+  c_output->background_view = NULL;
 
   c_output->output = output;
+
+  c_output->output_destroy_listener.notify = wet_output_handle_destroy;
+  weston_output_add_destroy_listener (c_output->output, &c_output->output_destroy_listener);
 
   wl_list_insert (&server->outputs, &c_output->link);
 
@@ -199,6 +252,7 @@ static void
 simple_head_disable(struct weston_head *head)
 {
 	struct weston_output *output;
+  Output *o;
 	XfwayHeadTracker *track;
 
 	track = xfway_head_tracker_from_head(head);
@@ -207,7 +261,9 @@ simple_head_disable(struct weston_head *head)
 
 	output = weston_head_get_output(head);
 	//assert(output);
-	weston_output_destroy(output);
+  o = wet_output_from_weston_output (output);
+  if (o && o->output == output)
+    wet_output_destroy (o);
 }
 
 static void
@@ -264,8 +320,12 @@ static int new_output_notify_wayland (struct weston_output *output)
   c_output = malloc (sizeof(Output));
   c_output->output = NULL;
   c_output->background = NULL;
+  c_output->background_view = NULL;
 
   c_output->output = output;
+
+  c_output->output_destroy_listener.notify = wet_output_handle_destroy;
+  weston_output_add_destroy_listener (c_output->output, &c_output->output_destroy_listener);
 
   wl_list_insert (&server->outputs, &c_output->link);
 
@@ -323,15 +383,15 @@ static int load_wayland_backend (xfwmDisplay *server, int32_t use_pixman)
 
 void background_create (xfwmDisplay *server, Output *o)
 {
-  if (server->background == NULL)
+  if (o->background == NULL)
     {
       weston_layer_init (&server->plain_background_layer, server->compositor);
       weston_layer_set_position (&server->plain_background_layer, WESTON_LAYER_POSITION_BACKGROUND - 1);
-      server->background = weston_surface_create (server->compositor);
-      weston_surface_set_size (server->background, o->output->width, o->output->height);
-      weston_surface_set_color (server->background, 0, 0, 0, 1);
-      server->background_view = weston_view_create (server->background);
-      weston_layer_entry_insert (&server->plain_background_layer.view_list, &server->background_view->layer_link);
+      o->background = weston_surface_create (server->compositor);
+      weston_surface_set_size (o->background, o->output->width, o->output->height);
+      weston_surface_set_color (o->background, 0, 0, 0, 1);
+      o->background_view = weston_view_create (o->background);
+      weston_layer_entry_insert (&server->plain_background_layer.view_list, &o->background_view->layer_link);
     }
 }
 
