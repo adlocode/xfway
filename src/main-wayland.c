@@ -385,8 +385,6 @@ void black_background_create (xfwmDisplay *server, Output *o)
 {
   if (o->background == NULL)
     {
-      weston_layer_init (&server->black_background_layer, server->compositor);
-      weston_layer_set_position (&server->black_background_layer, WESTON_LAYER_POSITION_BACKGROUND - 1);
       o->background = weston_surface_create (server->compositor);
       weston_surface_set_size (o->background, o->output->width, o->output->height);
       weston_surface_set_color (o->background, 0, 0, 0, 1);
@@ -630,6 +628,9 @@ int main (int    argc,
 
 	server->compositor = weston_compositor_create (display, server);
   weston_compositor_set_xkb_rule_names (server->compositor, NULL);
+
+  weston_layer_init (&server->black_background_layer, server->compositor);
+      weston_layer_set_position (&server->black_background_layer, WESTON_LAYER_POSITION_BACKGROUND - 1);
 
 	if (!server->compositor)
 		return 0;
