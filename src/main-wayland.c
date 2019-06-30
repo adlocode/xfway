@@ -381,17 +381,17 @@ static int load_wayland_backend (xfwmDisplay *server, int32_t use_pixman)
   return ret;
 }
 
-void background_create (xfwmDisplay *server, Output *o)
+void black_background_create (xfwmDisplay *server, Output *o)
 {
   if (o->background == NULL)
     {
-      weston_layer_init (&server->plain_background_layer, server->compositor);
-      weston_layer_set_position (&server->plain_background_layer, WESTON_LAYER_POSITION_BACKGROUND - 1);
+      weston_layer_init (&server->black_background_layer, server->compositor);
+      weston_layer_set_position (&server->black_background_layer, WESTON_LAYER_POSITION_BACKGROUND - 1);
       o->background = weston_surface_create (server->compositor);
       weston_surface_set_size (o->background, o->output->width, o->output->height);
       weston_surface_set_color (o->background, 0, 0, 0, 1);
       o->background_view = weston_view_create (o->background);
-      weston_layer_entry_insert (&server->plain_background_layer.view_list, &o->background_view->layer_link);
+      weston_layer_entry_insert (&server->black_background_layer.view_list, &o->background_view->layer_link);
     }
 }
 
@@ -683,7 +683,7 @@ int main (int    argc,
 
   wl_list_for_each (o, &server->outputs, link)
       {
-        background_create (server, o);
+        black_background_create (server, o);
       }
 
   socket_name = wl_display_add_socket_auto (display);
