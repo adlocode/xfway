@@ -41,20 +41,51 @@
 	(type *)( (char *)__mptr - offsetof(type,member) );})
 #endif
 
+struct wet_layoutput;
+
 struct _XfwayHeadTracker {
 	struct wl_listener head_destroy_listener;
 };
 
 typedef struct _XfwayHeadTracker XfwayHeadTracker;
 
+struct wet_output_config {
+	int width;
+	int height;
+	int32_t scale;
+	uint32_t transform;
+};
+
 typedef struct
 {
   struct weston_output *output;
   struct weston_surface *background;
   struct weston_view *background_view;
+  struct wet_layoutput *layoutput;
   struct wl_listener output_destroy_listener;
   struct wl_list link;
 } Output;
+
+#define MAX_CLONE_HEADS 16
+
+struct wet_head_array {
+	struct weston_head *heads[MAX_CLONE_HEADS];	/**< heads to add */
+	unsigned n;				/**< the number of heads */
+};
+
+/** A layout output
+ *
+ * Contains Output objects that are all clones (independent CRTCs).
+ * Stores output layout information in the future.
+ */
+struct wet_layoutput {
+	struct wet_compositor *compositor;
+	struct wl_list compositor_link;	/**< in wet_compositor::layoutput_list */
+	struct wl_list output_list;	/**< wet_output::link */
+	char *name;
+	struct weston_config_section *section;
+	struct wet_head_array add;	/**< tmp: heads to add as clones */
+};
 
 static int vlog (const char *fmt,
                  va_list     ap)
