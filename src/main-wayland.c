@@ -33,13 +33,9 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <assert.h>
 #include "os-compatibility.h"
-
-#ifndef container_of
-#define container_of(ptr, type, member) ({				\
-	const __typeof__( ((type *)0)->member ) *__mptr = (ptr);	\
-	(type *)( (char *)__mptr - offsetof(type,member) );})
-#endif
+#include "../util/helpers.h"
 
 struct wet_layoutput;
 
@@ -79,7 +75,7 @@ struct wet_head_array {
  * Stores output layout information in the future.
  */
 struct wet_layoutput {
-	struct wet_compositor *compositor;
+	xfwmDisplay *compositor;
 	struct wl_list compositor_link;	/**< in wet_compositor::layoutput_list */
 	struct wl_list output_list;	/**< wet_output::link */
 	char *name;
@@ -146,9 +142,15 @@ wet_output_destroy(Output *output)
 	free(output);
 }
 
-static int new_output_notify_drm (struct weston_output *output)
+static int drm_backend_output_configure (struct weston_output *output)
 {
   xfwmDisplay *server = weston_compositor_get_user_data (output->compositor);
+
+  server->api.drm = weston_drm_output_get_api(output->compositor);
+	if (!server->api.drm) {
+		weston_log("Cannot use weston_drm_output_api.\n");
+		return -1;
+	}
 
   server->api.drm->set_mode (output, WESTON_DRM_BACKEND_OUTPUT_PREFERRED, NULL);
   server->api.drm->set_gbm_format (output, NULL);
@@ -364,6 +366,333 @@ static int new_output_notify_wayland (struct weston_output *output)
 
 }
 
+static Output *
+wet_layoutput_create_output(struct wet_layoutput *lo, const char *name)
+{
+	Output *output;
+
+	output = zalloc(sizeof *output);
+	if (!output)
+		return NULL;
+
+	output->output =
+		weston_compositor_create_output(lo->compositor->compositor,
+						name);
+	if (!output) {
+		free(output);
+		return NULL;
+	}
+
+	output->layoutput = lo;
+	wl_list_insert(lo->output_list.prev, &output->link);
+	output->output_destroy_listener.notify = wet_output_handle_destroy;
+	weston_output_add_destroy_listener(output->output,
+					   &output->output_destroy_listener);
+
+	return output;
+}
+
+static struct wet_layoutput *
+wet_compositor_create_layoutput(xfwmDisplay *compositor,
+				const char *name,
+				struct weston_config_section *section)
+{
+	struct wet_layoutput *lo;
+
+	lo = zalloc(sizeof *lo);
+	if (!lo)
+		return NULL;
+
+	lo->compositor = compositor;
+	wl_list_insert(compositor->layoutput_list.prev, &lo->compositor_link);
+	wl_list_init(&lo->output_list);
+	lo->name = strdup(name);
+	lo->section = section;
+
+	return lo;
+}
+
+static struct wet_layoutput *
+wet_compositor_find_layoutput(xfwmDisplay *wet, const char *name)
+{
+	struct wet_layoutput *lo;
+
+	wl_list_for_each(lo, &wet->layoutput_list, compositor_link)
+		if (strcmp(lo->name, name) == 0)
+			return lo;
+
+	return NULL;
+}
+
+static void
+wet_compositor_layoutput_add_head(xfwmDisplay *wet,
+				  const char *output_name,
+				  struct weston_config_section *section,
+				  struct weston_head *head)
+{
+	struct wet_layoutput *lo;
+
+	lo = wet_compositor_find_layoutput(wet, output_name);
+	if (!lo) {
+		lo = wet_compositor_create_layoutput(wet, output_name, section);
+		if (!lo)
+			return;
+	}
+
+	if (lo->add.n + 1 >= ARRAY_LENGTH(lo->add.heads))
+		return;
+
+	lo->add.heads[lo->add.n++] = head;
+}
+
+static void
+drm_head_prepare_enable(xfwmDisplay *wet,
+			struct weston_head *head)
+{
+	const char *name = weston_head_get_name(head);
+	struct weston_config_section *section;
+	char *output_name = NULL;
+	char *mode = NULL;
+
+	/*section = drm_config_find_controlling_output_section(wet->config, name);
+	if (section) {
+		/* skip outputs that are explicitly off, the backend turns
+		 * them off automatically.
+		 */
+		/*weston_config_section_get_string(section, "mode", &mode, NULL);
+		if (mode && strcmp(mode, "off") == 0) {
+			free(mode);
+			return;
+		}
+		free(mode);
+
+		weston_config_section_get_string(section, "name",
+						 &output_name, NULL);
+		assert(output_name);
+
+		wet_compositor_layoutput_add_head(wet, output_name,
+						  section, head);
+		free(output_name);
+	} else {*/
+		wet_compositor_layoutput_add_head(wet, name, NULL, head);
+	//}
+}
+
+static void
+drm_try_attach(struct weston_output *output,
+	       struct wet_head_array *add,
+	       struct wet_head_array *failed)
+{
+	unsigned i;
+
+	/* try to attach all heads, this probably succeeds */
+	for (i = 0; i < add->n; i++) {
+		if (!add->heads[i])
+			continue;
+
+		if (weston_output_attach_head(output, add->heads[i]) < 0) {
+			assert(failed->n < ARRAY_LENGTH(failed->heads));
+
+			failed->heads[failed->n++] = add->heads[i];
+			add->heads[i] = NULL;
+		}
+	}
+}
+
+static int
+drm_try_enable(struct weston_output *output,
+	       struct wet_head_array *undo,
+	       struct wet_head_array *failed)
+{
+	/* Try to enable, and detach heads one by one until it succeeds. */
+	while (!output->enabled) {
+		if (weston_output_enable(output) == 0)
+			return 0;
+
+		/* the next head to drop */
+		while (undo->n > 0 && undo->heads[--undo->n] == NULL)
+			;
+
+		/* No heads left to undo and failed to enable. */
+		if (undo->heads[undo->n] == NULL)
+			return -1;
+
+		assert(failed->n < ARRAY_LENGTH(failed->heads));
+
+		/* undo one head */
+		weston_head_detach(undo->heads[undo->n]);
+		failed->heads[failed->n++] = undo->heads[undo->n];
+		undo->heads[undo->n] = NULL;
+	}
+
+	return 0;
+}
+
+static int
+drm_try_attach_enable(struct weston_output *output, struct wet_layoutput *lo)
+{
+	struct wet_head_array failed = {};
+	unsigned i;
+
+	assert(!output->enabled);
+
+	drm_try_attach(output, &lo->add, &failed);
+	if (drm_backend_output_configure(output) < 0)
+		return -1;
+
+	if (drm_try_enable(output, &lo->add, &failed) < 0)
+		return -1;
+
+	/* For all successfully attached/enabled heads */
+	for (i = 0; i < lo->add.n; i++)
+		if (lo->add.heads[i])
+			xfway_head_tracker_create(lo->compositor,
+						lo->add.heads[i]);
+
+	/* Push failed heads to the next round. */
+	lo->add = failed;
+
+	return 0;
+}
+
+static int
+drm_process_layoutput(xfwmDisplay *wet, struct wet_layoutput *lo)
+{
+	Output *output, *tmp;
+	char *name = NULL;
+	int ret;
+
+	/*
+	 *   For each existing wet_output:
+	 *     try attach
+	 *   While heads left to enable:
+	 *     Create output
+	 *     try attach, try enable
+	 */
+
+	wl_list_for_each_safe(output, tmp, &lo->output_list, link) {
+		struct wet_head_array failed = {};
+
+		if (!output->output) {
+			/* Clean up left-overs from destroyed heads. */
+			wet_output_destroy(output);
+			continue;
+		}
+
+		assert(output->output->enabled);
+
+		drm_try_attach(output->output, &lo->add, &failed);
+		lo->add = failed;
+		if (lo->add.n == 0)
+			return 0;
+	}
+
+	if (!weston_compositor_find_output_by_name(wet->compositor, lo->name))
+		name = strdup(lo->name);
+
+	while (lo->add.n > 0) {
+		if (!wl_list_empty(&lo->output_list)) {
+			weston_log("Error: independent-CRTC clone mode is not implemented.\n");
+			return -1;
+		}
+
+		if (!name) {
+			ret = asprintf(&name, "%s:%s", lo->name,
+				       weston_head_get_name(lo->add.heads[0]));
+			if (ret < 0)
+				return -1;
+		}
+		output = wet_layoutput_create_output(lo, name);
+		free(name);
+		name = NULL;
+
+		if (!output)
+			return -1;
+
+		if (drm_try_attach_enable(output->output, lo) < 0) {
+			wet_output_destroy(output);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int
+drm_process_layoutputs(xfwmDisplay *wet)
+{
+	struct wet_layoutput *lo;
+	int ret = 0;
+
+	wl_list_for_each(lo, &wet->layoutput_list, compositor_link) {
+		if (lo->add.n == 0)
+			continue;
+
+		if (drm_process_layoutput(wet, lo) < 0) {
+			lo->add = (struct wet_head_array){};
+			ret = -1;
+		}
+	}
+
+	return ret;
+}
+
+static void
+drm_head_disable(struct weston_head *head)
+{
+	struct weston_output *output_base;
+	Output *output;
+	XfwayHeadTracker *track;
+
+	track = xfway_head_tracker_from_head(head);
+	if (track)
+		xfway_head_tracker_destroy(track);
+
+	output_base = weston_head_get_output(head);
+	assert(output_base);
+	output = wet_output_from_weston_output(output_base);
+	assert(output && output->output == output_base);
+
+	weston_head_detach(head);
+	if (count_remaining_heads(output->output, NULL) == 0)
+		wet_output_destroy(output);
+}
+
+static void
+drm_heads_changed(struct wl_listener *listener, void *arg)
+{
+	struct weston_compositor *compositor = arg;
+	xfwmDisplay *wet = weston_compositor_get_user_data (compositor);
+	struct weston_head *head = NULL;
+	bool connected;
+	bool enabled;
+	bool changed;
+	bool forced;
+
+	/* We need to collect all cloned heads into outputs before enabling the
+	 * output.
+	 */
+	while ((head = weston_compositor_iterate_heads(compositor, head))) {
+		connected = weston_head_is_connected(head);
+		enabled = weston_head_is_enabled(head);
+		changed = weston_head_is_device_changed(head);
+
+		if ((connected ) && !enabled) {
+			drm_head_prepare_enable(wet, head);
+		} else if (!(connected ) && enabled) {
+			drm_head_disable(head);
+		} else if (enabled && changed) {
+			weston_log("Detected a monitor change on head '%s', "
+				   "not bothering to do anything about it.\n",
+				   weston_head_get_name(head));
+		}
+		weston_head_reset_device_changed(head);
+	}
+
+	if (drm_process_layoutputs(wet) < 0)
+		wet->init_failed = true;
+}
+
 static int load_drm_backend (xfwmDisplay *server, int32_t use_pixman)
 {
   struct weston_drm_backend_config config = {{ 0, }};
@@ -373,13 +702,11 @@ static int load_drm_backend (xfwmDisplay *server, int32_t use_pixman)
 	config.base.struct_size = sizeof (struct weston_drm_backend_config);
   config.use_pixman = use_pixman;
 
+  server->heads_changed_listener.notify = drm_heads_changed;
+	weston_compositor_add_heads_changed_listener(server->compositor,
+						&server->heads_changed_listener);
+
   ret = weston_compositor_load_backend (server->compositor, WESTON_BACKEND_DRM, &config.base);
-
-  server->api.drm = weston_drm_output_get_api (server->compositor);
-  if (server->api.drm == NULL)
-    return 1;
-
-  compositor_set_simple_head_configurator(server->compositor, new_output_notify_drm);
 
   return ret;
 }
@@ -633,6 +960,8 @@ int main (int    argc,
   struct weston_output *output;
 
   server = malloc (sizeof(xfwmDisplay));
+
+  wl_list_init(&server->layoutput_list);
 
   server->background = NULL;
 

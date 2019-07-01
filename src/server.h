@@ -40,6 +40,8 @@ struct _xfwmDisplay
 {
   struct weston_compositor *compositor;
   struct wl_listener heads_changed_listener;
+  bool init_failed;
+	struct wl_list layoutput_list;	/**< wet_layoutput::compositor_link */
   union
     {
       const struct weston_drm_output_api *drm;
