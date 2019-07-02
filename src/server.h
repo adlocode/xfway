@@ -31,6 +31,7 @@
 #include <linux/input.h>
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
+#include <xfconf/xfconf.h>
 #include <protocol/wlr-foreign-toplevel-management-unstable-v1-protocol.h>
 #include "wlr_foreign_toplevel_management_v1.h"
 
@@ -47,6 +48,9 @@ struct _xfwmDisplay
       const struct weston_drm_output_api *drm;
       const struct weston_windowed_output_api *windowed;
     } api;
+
+  XfconfChannel *channel;
+
   struct weston_layer black_background_layer;
   struct weston_layer background_layer;
   struct weston_surface *background;

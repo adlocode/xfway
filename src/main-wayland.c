@@ -23,6 +23,7 @@
 #include <libinput.h>
 #include <string.h>
 #include <windowed-output-api.h>
+#include <xfconf/xfconf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <linux/input.h>
@@ -700,7 +701,7 @@ static int load_drm_backend (xfwmDisplay *server, int32_t use_pixman)
 
   config.base.struct_version = WESTON_DRM_BACKEND_CONFIG_VERSION;
 	config.base.struct_size = sizeof (struct weston_drm_backend_config);
-  config.use_pixman = use_pixman;
+  config.use_pixman = xfconf_channel_get_bool (server->channel, "/use-pixman", FALSE);
 
   server->heads_changed_listener.notify = drm_heads_changed;
 	weston_compositor_add_heads_changed_listener(server->compositor,
@@ -722,7 +723,7 @@ static int load_wayland_backend (xfwmDisplay *server, int32_t use_pixman)
 
 	config.cursor_size = 32;
 	config.display_name = 0;
-	config.use_pixman = use_pixman;
+	config.use_pixman = xfconf_channel_get_bool (server->channel, "/use-pixman", FALSE);
 	config.sprawl = 0;
 	config.fullscreen = 0;
 	config.cursor_theme = NULL;
@@ -958,8 +959,19 @@ int main (int    argc,
   const char *socket_name = NULL;
   xfwmDisplay *server;
   struct weston_output *output;
+  GError *error = NULL;
 
   server = malloc (sizeof(xfwmDisplay));
+
+  if (!xfconf_init (&error))
+    {
+      g_critical ("Failed to initialize xfconf: %s", error->message);
+      g_error_free (error);
+
+      return EXIT_FAILURE;
+    }
+
+  server->channel = xfconf_channel_get ("xfway");
 
   wl_list_init(&server->layoutput_list);
 

@@ -38,7 +38,8 @@ $(LIBINPUT_CFLAGS) \
 $(XKBCOMMON_CFLAGS) \
 $(EGL_CFLAGS) \
 $(EVDEV_CFLAGS) \
-$(GTK_CFLAGS)
+$(GTK_CFLAGS) \
+$(LIBXFCONF_CFLAGS)
 
 xfway_LDADD = \
 $(WAYLAND_SERVER_LIBS) \
@@ -49,7 +50,8 @@ $(XKBCOMMON_LIBS) \
 $(EGL_LIBS) \
 $(EVDEV_LIBS) \
 $(PIXMAN_LIBS) \
-$(GTK_LIBS)
+$(GTK_LIBS) \
+$(LIBXFCONF_LIBS)
 
 xfway_shell_SOURCES = \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.c \
