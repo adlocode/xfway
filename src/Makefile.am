@@ -58,10 +58,13 @@ $(top_srcdir)/protocol/xfway-shell-client-protocol.c \
 $(top_srcdir)/protocol/xfway-shell-client-protocol.h \
 $(top_srcdir)/protocol/wlr-foreign-toplevel-management-unstable-v1-protocol.c \
 $(top_srcdir)/protocol/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h \
+display.h \
 screen.c \
 screen.h \
 client.c \
 client.h \
+stacking.c \
+stacking.h \
 $(top_srcdir)/util/libgwater-wayland.c \
 $(top_srcdir)/util/libgwater-wayland.h \
 $(top_srcdir)/util/helpers.h \

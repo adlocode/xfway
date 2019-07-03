@@ -35,6 +35,7 @@
 #include <gtk/gtk.h>
 
 #include <protocol/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h>
+#include "display.h"
 #include "screen.h"
 
 
@@ -267,10 +268,13 @@ struct _Client
 
     struct zwlr_foreign_toplevel_handle_v1 *toplevel_handle;
 
+    Client *next;
+    Client *prev;
+
     gchar *name;
 };
 
-typedef struct _Client Client;
+
 
 extern Client *clients;
 extern unsigned int client_count;

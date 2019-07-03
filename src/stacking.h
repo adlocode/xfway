@@ -16,37 +16,22 @@
         MA 02110-1301, USA.
 
 
-        oroborus - (c) 2001 Ken Lynch
         xfwm4    - (c) 2002-2011 Olivier Fourdan
 
  */
 
-#ifndef INC_SCREEN_H
-#define INC_SCREEN_H
+#ifndef INC_STACKING_H
+#define INC_STACKING_H
 
-#include <gtk/gtk.h>
-#include "display.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <glib.h>
+#include "screen.h"
 #include "client.h"
-#include <protocol/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h>
 
-struct _ScreenInfo
-{
-  GList *windows_stack;
-  GList *windows;
+void                     clientAddToList                        (Client *);
+void                     clientRemoveFromList                   (Client *);
 
-  GdkScreen *gscr;
-
-  struct zwlr_foreign_toplevel_manager_v1 *toplevel_manager;
-
-  Client *clients;
-  guint client_count;
-};
-
-
-
-ScreenInfo              *myScreenInit                           (GdkScreen *);
-gint                     myScreenGetNumMonitors                 (ScreenInfo *);
-gint                     myScreenGetMonitorIndex                (ScreenInfo *,
-                                                                 gint);
-
-#endif /* INC_SCREEN_H */
+#endif /* INC_STACKING_H */
