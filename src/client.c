@@ -37,6 +37,7 @@
 
 #include "client.h"
 #include "screen.h"
+#include "stacking.h"
 
 Client *
 clientFrame (ScreenInfo *screen_info,
@@ -61,6 +62,8 @@ clientFrame (ScreenInfo *screen_info,
 
     c->name = NULL;
 
+    clientAddToList (c);
+
     return c;
 }
 
@@ -75,5 +78,7 @@ clientFree (Client *c)
 void
 clientUnframe (Client *c, gboolean remap)
 {
+  clientRemoveFromList (c);
+
   clientFree (c);
 }

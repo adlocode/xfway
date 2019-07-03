@@ -143,7 +143,7 @@ void global_add (void               *data,
 				2);
 
     zwlr_foreign_toplevel_manager_v1_add_listener(screen_info->toplevel_manager,
-				&toplevel_manager_impl, NULL);
+				&toplevel_manager_impl, screen_info);
       }
 }
 void global_remove (void               *data,

@@ -27,6 +27,9 @@ myScreenInit (GdkScreen *gscr)
 
     screen_info->toplevel_manager = NULL;
 
+    screen_info->clients = NULL;
+    screen_info->client_count = 0;
+
     return (screen_info);
 }
 
