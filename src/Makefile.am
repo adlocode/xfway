@@ -65,6 +65,11 @@ client.c \
 client.h \
 stacking.c \
 stacking.h \
+settings.h \
+tabwin.c \
+tabwin.h \
+$(top_srcdir)/common/xfwm-common.c \
+$(top_srcdir)/common/xfwm-common.h \
 $(top_srcdir)/util/libgwater-wayland.c \
 $(top_srcdir)/util/libgwater-wayland.h \
 $(top_srcdir)/util/helpers.h \

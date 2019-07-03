@@ -31,8 +31,6 @@
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
 
-#include "screen.h"
-
 typedef struct _Tabwin Tabwin;
 typedef struct _TabwinWidget TabwinWidget;
 typedef struct _TabwinWidgetClass TabwinWidgetClass;
