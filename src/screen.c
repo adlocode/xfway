@@ -22,6 +22,7 @@ myScreenInit (GdkScreen *gscr)
     ScreenInfo *screen_info;
 
     screen_info = g_new0 (ScreenInfo, 1);
+    screen_info->params = g_new0 (XfwmParams, 1);
 
     screen_info->gscr = gscr;
 
