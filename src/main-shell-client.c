@@ -26,6 +26,16 @@
 struct wl_display *display = NULL;
 static struct wl_registry *registry = NULL;
 
+static Client *focus = NULL;
+
+enum toplevel_state_field {
+	TOPLEVEL_STATE_MAXIMIZED = (1 << 0),
+	TOPLEVEL_STATE_MINIMIZED = (1 << 1),
+	TOPLEVEL_STATE_ACTIVATED = (1 << 2),
+	TOPLEVEL_STATE_FULLSCREEN = (1 << 3),
+	TOPLEVEL_STATE_INVALID = (1 << 4),
+};
+
 static void shell_handle_tabwin (void *data, struct xfway_shell *shell)
 {
 
@@ -64,11 +74,31 @@ static void toplevel_handle_app_id(void *data,
 
 }
 
+static uint32_t array_to_state(struct wl_array *array) {
+	uint32_t state = 0;
+	uint32_t *entry;
+	wl_array_for_each(entry, array) {
+		if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED)
+			state |= TOPLEVEL_STATE_MAXIMIZED;
+		if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED)
+			state |= TOPLEVEL_STATE_MINIMIZED;
+		if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED)
+			state |= TOPLEVEL_STATE_ACTIVATED;
+		if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN)
+			state |= TOPLEVEL_STATE_FULLSCREEN;
+	}
+
+	return state;
+}
+
 static void toplevel_handle_state(void *data,
 		struct zwlr_foreign_toplevel_handle_v1 *zwlr_toplevel,
-		struct wl_array *state)
-{
+		struct wl_array *state) {
+	Client *c = data;
+	uint32_t s = array_to_state(state);
 
+  if (s & TOPLEVEL_STATE_ACTIVATED)
+    focus = c;
 }
 
 static void toplevel_handle_done(void *data,
