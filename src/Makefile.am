@@ -20,6 +20,8 @@ $(top_srcdir)/protocol/wlr-layer-shell-unstable-v1-protocol.c \
 $(top_srcdir)/protocol/wlr-layer-shell-unstable-v1-protocol.h \
 wlr_layer_shell_v1.c \
 wlr_layer_shell_v1.h \
+$(top_srcdir)/protocol/xdg-shell.c \
+$(top_srcdir)/protocol/xdg-shell.h \
 os-compatibility.c \
 os-compatibility.h \
 $(top_srcdir)/util/helpers.h \
@@ -32,7 +34,6 @@ main-wayland.c
 
 xfway_CFLAGS = \
 $(WAYLAND_SERVER_CFLAGS) \
-$(WAYLAND_PROTOCOLS_CFLAGS) \
 $(LIBWESTON_CFLAGS) \
 $(LIBWESTON_DESKTOP_CFLAGS) \
 $(LIBINPUT_CFLAGS) \
@@ -44,7 +45,6 @@ $(LIBXFCONF_CFLAGS)
 
 xfway_LDADD = \
 $(WAYLAND_SERVER_LIBS) \
-$(WAYLAND_PROTOCOLS_LIBS) \
 $(LIBWESTON_LIBS) \
 $(LIBWESTON_DESKTOP_LIBS) \
 $(LIBINPUT_LIBS) \
