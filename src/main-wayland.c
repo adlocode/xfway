@@ -16,13 +16,11 @@
 
 #define _GNU_SOURCE
 #include <wayland-server.h>
-#include <compositor.h>
-#include <compositor-drm.h>
-#include <compositor-wayland.h>
-#include <libweston-desktop.h>
+#include <libweston/libweston.h>
+#include <libweston-desktop/libweston-desktop.h>
 #include <libinput.h>
 #include <string.h>
-#include <windowed-output-api.h>
+#include <libweston/windowed-output-api.h>
 #include <xfconf/xfconf.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -960,6 +958,7 @@ int main (int    argc,
   xfwmDisplay *server;
   struct weston_output *output;
   GError *error = NULL;
+  struct weston_log_context *log_ctx = NULL;
 
   server = malloc (sizeof(xfwmDisplay));
 
@@ -974,6 +973,8 @@ int main (int    argc,
   server->channel = xfconf_channel_get ("xfway");
 
   wl_list_init(&server->layoutput_list);
+  
+  log_ctx = weston_log_ctx_compositor_create ();
 
   server->background = NULL;
 
@@ -998,7 +999,7 @@ int main (int    argc,
 
   wl_list_init(&child_process_list);
 
-	server->compositor = weston_compositor_create (display, server);
+	server->compositor = weston_compositor_create (display, log_ctx, server);
   weston_compositor_set_xkb_rule_names (server->compositor, NULL);
 
   weston_layer_init (&server->black_background_layer, server->compositor);

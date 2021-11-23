@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wayland-server.h>
-#include <compositor.h>
+#include <libweston/libweston.h>
 #include "wlr_layer_shell_v1.h"
 //#include <wlr/types/wlr_output.h>
 //#include <wlr/types/wlr_surface.h>

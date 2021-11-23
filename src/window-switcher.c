@@ -15,8 +15,8 @@
  */
 
 #include <wayland-server.h>
-#include <compositor.h>
-#include <libweston-desktop.h>
+#include <libweston/libweston.h>
+#include <libweston-desktop/libweston-desktop.h>
 #include <protocol/window-switcher-unstable-v1-server-protocol.h>
 #include <gtk/gtk.h>
 

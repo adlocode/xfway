@@ -28,9 +28,9 @@
 
 #include <wayland-server.h>
 #include <wayland-util.h>
-#include <compositor.h>
-#include <compositor-drm.h>
-#include <compositor-wayland.h>
+#include <libweston/libweston.h>
+//#include <compositor-drm.h>
+//#include <compositor-wayland.h>
 
 struct weston_process;
 typedef void (*weston_process_cleanup_func_t)(struct weston_process *process,

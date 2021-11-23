@@ -121,8 +121,8 @@ AC_CHECK_LIB([Xi], [XISelectEvents],
 
 XDT_CHECK_PACKAGE([WAYLAND_SERVER], [wayland-server], [1.0.0])
 XDT_CHECK_PACKAGE([WAYLAND_CLIENT], [wayland-client], [1.0.0])
-XDT_CHECK_PACKAGE([LIBWESTON], [libweston-6], [6.0.0], 
-	[XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-6], [6.0.0])],
+XDT_CHECK_PACKAGE([LIBWESTON], [libweston-8], [6.0.0], 
+	[XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-8], [6.0.0])],
 	[XDT_CHECK_PACKAGE([LIBWESTON], [libweston-5], [5.0.0])
 	XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-5], [5.0.0])
 ])
@@ -144,23 +144,23 @@ XDT_CHECK_PACKAGE([LIBXFCONF], libxfconf-0, [xfconf_minimum_version],,
 XDT_CHECK_PACKAGE([LIBWNCK], [libwnck-3.0], [wnck_minimum_version])
 XDT_CHECK_PACKAGE([XINERAMA], [xinerama], [0])
 
-AS_IF([test "x$USE_MAINTAINER_MODE" = "xyes"],
-[
-  AC_PATH_PROG([EXO_CSOURCE], [exo-csource])
-  AS_IF([test -z "$EXO_CSOURCE"],
-  [
-    echo '*** The program "exo-csource" is required to build when --enable-maintainer-mode'
-    echo '*** is specified.'
-    exit 1
-  ])
-  AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources])
-  AS_IF([test -z "$GLIB_COMPILE_RESOURCES"],
-  [
-    echo '*** The program "glib-compile-resources" is required to build when --enable-maintainer-mode'
-    echo '*** is specified.'
-    exit 1
-  ])
-])
+dnl AS_IF([test "x$USE_MAINTAINER_MODE" = "xyes"],
+dnl [
+dnl  AC_PATH_PROG([EXO_CSOURCE], [exo-csource])
+dnl  AS_IF([test -z "$EXO_CSOURCE"],
+dnl  [
+dnl    echo '*** The program "exo-csource" is required to build when --enable-maintainer-mode'
+dnl    echo '*** is specified.'
+dnl    exit 1
+dnl  ])
+dnl  AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources])
+dnl  AS_IF([test -z "$GLIB_COMPILE_RESOURCES"],
+dnl  [
+dnl    echo '*** The program "glib-compile-resources" is required to build when --dnl enable-maintainer-mode'
+dnl    echo '*** is specified.'
+dnl    exit 1
+dnl  ])
+dnl ])
 
 dnl
 dnl Sync to vblank support

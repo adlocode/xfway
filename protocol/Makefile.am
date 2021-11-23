@@ -1,7 +1,15 @@
 ACLOCAL_AMFLAGS = -I m4
 
-unstable_protocols =								\
+unstable_protocols_SOURCES =								\
 xfway-shell.xml							\
+	$(NULL)
+	
+unstable_protocols_CFLAGS =								\
+$(WAYLAND_PROTOCOLS_CFLAGS) \
+	$(NULL)
+	
+unstable_protocols_LDADD =								\
+$(WAYLAND_PROTOCOLS_LIBS) \
 	$(NULL)
 
 stable_protocols =								\
