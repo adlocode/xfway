@@ -121,8 +121,8 @@ AC_CHECK_LIB([Xi], [XISelectEvents],
 
 XDT_CHECK_PACKAGE([WAYLAND_SERVER], [wayland-server], [1.0.0])
 XDT_CHECK_PACKAGE([WAYLAND_CLIENT], [wayland-client], [1.0.0])
-XDT_CHECK_PACKAGE([LIBWESTON], [libweston-8], [6.0.0], 
-	[XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-8], [6.0.0])],
+XDT_CHECK_PACKAGE([LIBWESTON], [libweston-10], [10.0.0], 
+	[XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-10], [10.0.0])],
 	[XDT_CHECK_PACKAGE([LIBWESTON], [libweston-5], [5.0.0])
 	XDT_CHECK_PACKAGE([LIBWESTON_DESKTOP], [libweston-desktop-5], [5.0.0])
 ])

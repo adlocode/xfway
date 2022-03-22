@@ -673,7 +673,7 @@ activate (Shell *shell,
   if (new_layer_link == &cw->view->layer_link)
     return;
 
-      weston_view_activate (view, seat,
+      weston_view_activate_input (view, seat,
                             WESTON_ACTIVATE_FLAG_CLICKED |
                             WESTON_ACTIVATE_FLAG_CONFIGURE);
 
